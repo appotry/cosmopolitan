@@ -1,7 +1,6 @@
 #ifndef MBEDTLS_POLY1305_H
 #define MBEDTLS_POLY1305_H
 #include "third_party/mbedtls/config.h"
-/* clang-format off */
 
 #define MBEDTLS_ERR_POLY1305_BAD_INPUT_DATA         -0x0057 /*< Invalid input parameter(s). */
 
@@ -29,8 +28,6 @@ typedef struct mbedtls_poly1305_context
 }
 mbedtls_poly1305_context;
 
-#else  /* MBEDTLS_POLY1305_ALT */
-/* #include "third_party/mbedtls/poly1305_alt.h" */
 #endif /* MBEDTLS_POLY1305_ALT */
 
 /**

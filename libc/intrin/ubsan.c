@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2020 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -16,20 +16,23 @@
 │ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR             │
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
-#include "libc/alg/reverse.internal.h"
-#include "libc/bits/pushpop.h"
-#include "libc/bits/weaken.h"
+#include "libc/intrin/ubsan.h"
 #include "libc/calls/calls.h"
-#include "libc/calls/strace.internal.h"
-#include "libc/fmt/fmt.h"
+#include "libc/intrin/describebacktrace.h"
 #include "libc/intrin/kprintf.h"
+#include "libc/intrin/pushpop.h"
+#include "libc/intrin/strace.h"
+#include "libc/intrin/weaken.h"
+#include "libc/limits.h"
 #include "libc/log/color.internal.h"
 #include "libc/log/internal.h"
 #include "libc/log/libfatal.internal.h"
 #include "libc/log/log.h"
+#include "libc/mem/reverse.internal.h"
 #include "libc/nt/runtime.h"
 #include "libc/runtime/internal.h"
 #include "libc/runtime/runtime.h"
+#include "libc/runtime/symbols.internal.h"
 #include "libc/stdio/stdio.h"
 #include "libc/str/str.h"
 #include "libc/sysv/consts/fileno.h"
@@ -112,6 +115,13 @@ struct UbsanOverflowData {
   struct UbsanTypeDescriptor *type;
 };
 
+struct UbsanDynamicTypeCacheMissData {
+  struct UbsanSourceLocation location;
+  struct UbsanTypeDescriptor *type;
+  void *TypeInfo;
+  unsigned char TypeCheckKind;
+};
+
 struct UbsanFloatCastOverflowData {
 #if __GNUC__ + 0 >= 6
   struct UbsanSourceLocation location;
@@ -145,6 +155,8 @@ upcast of\0\
 cast to virtual base of\0\
 \0";
 
+uintptr_t __ubsan_vptr_type_cache[128];
+
 static int __ubsan_bits(struct UbsanTypeDescriptor *t) {
   return 1 << (t->info >> 1);
 }
@@ -166,10 +178,17 @@ static char *__ubsan_itpcpy(char *p, struct UbsanTypeDescriptor *t,
   }
 }
 
+static size_t __ubsan_strlen(const char *s) {
+  size_t i = 0;
+  while (s[i])
+    ++i;
+  return i;
+}
+
 static const char *__ubsan_dubnul(const char *s, unsigned i) {
   size_t n;
   while (i--) {
-    if ((n = __strlen(s))) {
+    if ((n = __ubsan_strlen(s))) {
       s += n + 1;
     } else {
       return NULL;
@@ -193,20 +212,29 @@ static uintptr_t __ubsan_extend(struct UbsanTypeDescriptor *t, uintptr_t x) {
 }
 
 static wontreturn void __ubsan_unreachable(void) {
-  for (;;) __builtin_trap();
+  for (;;)
+    abort();
 }
 
 static void __ubsan_exit(void) {
   kprintf("your ubsan runtime needs\n"
-          "\tSTATIC_YOINK(\"__die\");\n"
+          "\t__static_yoink(\"__die\");\n"
           "in order to show you backtraces\n");
-  __restorewintty();
   _Exit(99);
 }
 
-dontdiscard static __ubsan_die_f *__ubsan_die(void) {
-  if (weaken(__die)) {
-    return weaken(__die);
+static char *__ubsan_stpcpy(char *d, const char *s) {
+  size_t i;
+  for (i = 0;; ++i) {
+    if (!(d[i] = s[i])) {
+      return d + i;
+    }
+  }
+}
+
+__wur static __ubsan_die_f *__ubsan_die(void) {
+  if (_weaken(__die)) {
+    return _weaken(__die);
   } else {
     return __ubsan_exit;
   }
@@ -214,14 +242,20 @@ dontdiscard static __ubsan_die_f *__ubsan_die(void) {
 
 static void __ubsan_warning(const struct UbsanSourceLocation *loc,
                             const char *description) {
-  kprintf("%s:%d: %subsan warning: %s is undefined behavior%s\n", loc->file,
-          loc->line, SUBTLE, description, RESET);
+  kprintf("%s:%d: %subsan warning: %s is undefined behavior%s\n"
+          "cosmoaddr2line %s %s\n",
+          loc->file, loc->line, SUBTLE, description, RESET, __argv[0],
+          DescribeBacktrace(__builtin_frame_address(0)));
+  if (__ubsan_strict)
+    __ubsan_die()();
 }
 
-dontdiscard __ubsan_die_f *__ubsan_abort(const struct UbsanSourceLocation *loc,
-                                         const char *description) {
-  kprintf("\n%s:%d: %subsan error%s: %s\n", loc->file, loc->line, RED2, RESET,
-          description);
+__wur __ubsan_die_f *__ubsan_abort(const struct UbsanSourceLocation *loc,
+                                   const char *description) {
+  kprintf("\n%s:%d: %subsan error%s: %s (tid %d)\n"
+          "cosmoaddr2line %s %s\n",
+          loc->file, loc->line, RED2, RESET, description, gettid(), __argv[0],
+          DescribeBacktrace(__builtin_frame_address(0)));
   return __ubsan_die();
 }
 
@@ -246,11 +280,11 @@ static char *__ubsan_describe_shift_out_of_bounds(
   char *p = buf;
   lhs = __ubsan_extend(info->lhs_type, lhs);
   rhs = __ubsan_extend(info->rhs_type, rhs);
-  p = __stpcpy(p, __ubsan_describe_shift(info, lhs, rhs)), *p++ = ' ';
+  p = __ubsan_stpcpy(p, __ubsan_describe_shift(info, lhs, rhs)), *p++ = ' ';
   p = __ubsan_itpcpy(p, info->lhs_type, lhs), *p++ = ' ';
-  p = __stpcpy(p, info->lhs_type->name), *p++ = ' ';
+  p = __ubsan_stpcpy(p, info->lhs_type->name), *p++ = ' ';
   p = __ubsan_itpcpy(p, info->rhs_type, rhs), *p++ = ' ';
-  p = __stpcpy(p, info->rhs_type->name);
+  p = __ubsan_stpcpy(p, info->rhs_type->name);
   return buf;
 }
 
@@ -272,12 +306,12 @@ void __ubsan_handle_shift_out_of_bounds_abort(
 void __ubsan_handle_out_of_bounds(struct UbsanOutOfBoundsInfo *info,
                                   uintptr_t index) {
   char buf[512], *p = buf;
-  p = __stpcpy(p, info->index_type->name);
-  p = __stpcpy(p, " index ");
+  p = __ubsan_stpcpy(p, info->index_type->name);
+  p = __ubsan_stpcpy(p, " index ");
   p = __ubsan_itpcpy(p, info->index_type, index);
-  p = __stpcpy(p, " into ");
-  p = __stpcpy(p, info->array_type->name);
-  p = __stpcpy(p, " out of bounds");
+  p = __ubsan_stpcpy(p, " into ");
+  p = __ubsan_stpcpy(p, info->array_type->name);
+  p = __ubsan_stpcpy(p, " out of bounds");
   __ubsan_abort(&info->location, buf)();
   __ubsan_unreachable();
 }
@@ -291,22 +325,23 @@ static __ubsan_die_f *__ubsan_type_mismatch_handler(
     struct UbsanTypeMismatchInfo *info, uintptr_t pointer) {
   const char *kind;
   char buf[512], *p = buf;
-  if (!pointer) return __ubsan_abort(&info->location, "null pointer access");
+  if (!pointer)
+    return __ubsan_abort(&info->location, "null pointer access");
   kind = __ubsan_dubnul(kUbsanTypeCheckKinds, info->type_check_kind);
   if (info->alignment && (pointer & (info->alignment - 1))) {
-    p = __stpcpy(p, "unaligned ");
-    p = __stpcpy(p, kind), *p++ = ' ';
-    p = __stpcpy(p, info->type->name), *p++ = ' ', *p++ = '@';
+    p = __ubsan_stpcpy(p, "unaligned ");
+    p = __ubsan_stpcpy(p, kind), *p++ = ' ';
+    p = __ubsan_stpcpy(p, info->type->name), *p++ = ' ', *p++ = '@';
     p = __ubsan_itpcpy(p, info->type, pointer);
-    p = __stpcpy(p, " align ");
+    p = __ubsan_stpcpy(p, " align ");
     p = __intcpy(p, info->alignment);
   } else {
-    p = __stpcpy(p, "insufficient size ");
-    p = __stpcpy(p, kind);
-    p = __stpcpy(p, " address 0x");
+    p = __ubsan_stpcpy(p, "insufficient size ");
+    p = __ubsan_stpcpy(p, kind);
+    p = __ubsan_stpcpy(p, " address 0x");
     p = __fixcpy(p, pointer, sizeof(pointer) * CHAR_BIT);
-    p = __stpcpy(p, " with insufficient space for object of type ");
-    p = __stpcpy(p, info->type->name);
+    p = __ubsan_stpcpy(p, " with insufficient space for object of type ");
+    p = __ubsan_stpcpy(p, info->type->name);
   }
   return __ubsan_abort(&info->location, buf);
 }
@@ -425,15 +460,22 @@ void __ubsan_handle_divrem_overflow_abort(
   __ubsan_handle_divrem_overflow(loc);
 }
 
+static bool HandleDynamicTypeCacheMiss(
+    struct UbsanDynamicTypeCacheMissData *data, uintptr_t ptr, uintptr_t hash) {
+  return false;  // TODO: implement me
+}
+
 void __ubsan_handle_dynamic_type_cache_miss(
-    const struct UbsanSourceLocation *loc) {
-  __ubsan_abort(loc, "dynamic type cache miss")();
-  __ubsan_unreachable();
+    struct UbsanDynamicTypeCacheMissData *data, uintptr_t ptr, uintptr_t hash) {
+  HandleDynamicTypeCacheMiss(data, ptr, hash);
 }
 
 void __ubsan_handle_dynamic_type_cache_miss_abort(
-    const struct UbsanSourceLocation *loc) {
-  __ubsan_handle_dynamic_type_cache_miss(loc);
+    struct UbsanDynamicTypeCacheMissData *data, uintptr_t ptr, uintptr_t hash) {
+  if (HandleDynamicTypeCacheMiss(data, ptr, hash)) {
+    __ubsan_abort(&data->location, "dynamic type cache miss")();
+    __ubsan_unreachable();
+  }
 }
 
 void __ubsan_handle_function_type_mismatch(
@@ -597,7 +639,7 @@ void *__ubsan_get_current_report_data(void) {
   return 0;
 }
 
-static textstartup void ubsan_init() {
+__attribute__((__constructor__(90))) static textstartup void ubsan_init() {
   STRACE(" _   _ ____ ____    _    _   _");
   STRACE("| | | | __ ) ___|  / \\  | \\ | |");
   STRACE("| | | |  _ \\___ \\ / _ \\ |  \\| |");
@@ -605,7 +647,3 @@ static textstartup void ubsan_init() {
   STRACE(" \\___/|____/____/_/   \\_\\_| \\_|");
   STRACE("cosmopolitan behavior module initialized");
 }
-
-const void *const ubsan_ctor[] initarray = {
-    ubsan_init,
-};

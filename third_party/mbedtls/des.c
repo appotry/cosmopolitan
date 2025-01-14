@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:4;tab-width:4;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright The Mbed TLS Contributors                                          │
 │                                                                              │
@@ -15,21 +15,14 @@
 │ See the License for the specific language governing permissions and          │
 │ limitations under the License.                                               │
 ╚─────────────────────────────────────────────────────────────────────────────*/
+#include "third_party/mbedtls/des.h"
 #include "libc/mem/mem.h"
-#include "libc/runtime/gc.internal.h"
 #include "libc/stdio/stdio.h"
 #include "libc/str/str.h"
 #include "third_party/mbedtls/common.h"
-#include "third_party/mbedtls/des.h"
 #include "third_party/mbedtls/endian.h"
 #include "third_party/mbedtls/platform.h"
-
-asm(".ident\t\"\\n\\n\
-Mbed TLS (Apache 2.0)\\n\
-Copyright ARM Limited\\n\
-Copyright Mbed TLS Contributors\"");
-asm(".include \"libc/disclaimer.inc\"");
-/* clang-format off */
+__static_yoink("mbedtls_notice");
 
 /**
  * @fileoverview FIPS-46-3 compliant Triple-DES implementation
@@ -831,14 +824,11 @@ static const unsigned char des3_test_cbc_enc[3][8] =
 };
 #endif /* MBEDTLS_CIPHER_MODE_CBC */
 
-/*
- * Checkup routine
- */
-int mbedtls_des_self_test( int verbose )
+static int mbedtls_des_self_test_impl( int verbose,
+                                       mbedtls_des_context *ctx,
+                                       mbedtls_des3_context *ctx3 )
 {
     int i, j, u, v, ret = 0;
-    mbedtls_des_context *ctx = gc(malloc(sizeof(mbedtls_des_context)));
-    mbedtls_des3_context *ctx3 = gc(malloc(sizeof(mbedtls_des3_context)));
     unsigned char buf[8];
 #if defined(MBEDTLS_CIPHER_MODE_CBC)
     unsigned char prv[8];
@@ -1021,6 +1011,19 @@ exit:
     mbedtls_des3_free( ctx3 );
 
     return( ret );
+}
+
+int mbedtls_des_self_test( int verbose )
+{
+    int rc;
+    mbedtls_des_context *ctx;
+    mbedtls_des3_context *ctx3;
+    ctx = malloc( sizeof( mbedtls_des_context ) );
+    ctx3 = malloc( sizeof( mbedtls_des3_context ) );
+    rc = mbedtls_des_self_test_impl( verbose, ctx, ctx3 );
+    free( ctx3 );
+    free( ctx );
+    return( rc );
 }
 
 #endif /* MBEDTLS_SELF_TEST */

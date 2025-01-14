@@ -1,11 +1,12 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:4;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=4 sts=4 sw=4 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=4 sts=4 sw=4 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Python 3                                                                     │
 │ https://docs.python.org/3/license.html                                       │
 ╚─────────────────────────────────────────────────────────────────────────────*/
-#include "libc/bits/weaken.h"
+#include "libc/intrin/weaken.h"
 #include "libc/log/log.h"
+#include "libc/runtime/runtime.h"
 #include "libc/stdio/stdio.h"
 #include "third_party/python/Include/abstract.h"
 #include "third_party/python/Include/pyerrors.h"
@@ -13,10 +14,8 @@
 #include "third_party/python/Include/pythonrun.h"
 #include "third_party/python/Include/sysmodule.h"
 #include "third_party/python/Include/traceback.h"
-/* clang-format off */
 
 _Py_IDENTIFIER(flush);
-_Py_IDENTIFIER(stdout);
 _Py_IDENTIFIER(stderr);
 
 /* Import the site module (not into __main__ though) */
@@ -159,6 +158,6 @@ exit:
 #if defined(MS_WINDOWS) && defined(_DEBUG)
     DebugBreak();
 #endif
-    if (weaken(__die)) weaken(__die)();
+    if (_weaken(__die)) _weaken(__die)();
     abort();
 }

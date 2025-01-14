@@ -1,3 +1,4 @@
+#include "libc/intrin/bsf.h"
 #include "third_party/chibicc/chibicc.h"
 
 // Slurps contents of file.

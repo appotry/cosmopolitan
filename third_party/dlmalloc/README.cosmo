@@ -9,5 +9,11 @@ LICENSE
 
 LOCAL CHANGES
 
-  - Introduce __oom_hook()
-  - Favor pause (rather than sched_yield) for spin locks
+  - Fix MT-safety bugs in DEBUG mode
+  - Fix bug in dlmalloc_inspect_all()
+  - Define dlmalloc_requires_more_vespene_gas()
+  - Make dlmalloc scalable using sched_getcpu()
+  - Use faster two power roundup for memalign()
+  - Implemented the locking functions dlmalloc wants
+  - Use assembly _init() rather than ensure_initialization()
+  - Rather than calling mmap() 96 times from _start() just use .bss

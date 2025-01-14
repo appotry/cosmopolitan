@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2020 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -16,6 +16,9 @@
 │ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR             │
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
+#include "libc/intrin/bsf.h"
+#include "libc/intrin/bsr.h"
+#include "libc/ctype.h"
 #include "third_party/chibicc/chibicc.h"
 
 #define PRECIOUS 0b1111000000101000  // bx,bp,r12-r15
@@ -668,7 +671,7 @@ static void PopAsmInputs(Asm *a) {
 }
 
 static void StoreAsmOutputs(Asm *a) {
-  int i, z, x0, x1;
+  int i, z;
   for (i = 0; i < a->n; ++i) {
     if (a->ops[i].flow == '=' || a->ops[i].flow == '+') {
       switch (a->ops[i].type) {

@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2022 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -16,15 +16,15 @@
 │ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR             │
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
-#include "libc/calls/strace.internal.h"
 #include "libc/calls/syscall_support-nt.internal.h"
 #include "libc/dce.h"
-#include "libc/intrin/describeflags.internal.h"
+#include "libc/intrin/describeflags.h"
+#include "libc/intrin/strace.h"
 #include "libc/nt/memory.h"
 #include "libc/nt/struct/securityattributes.h"
 
-__msabi extern typeof(CreateFileMappingNuma) *const
-    __imp_CreateFileMappingNumaW;
+__msabi extern typeof(CreateFileMappingNuma)
+    *const __imp_CreateFileMappingNumaW;
 
 /**
  * Creates file mapping object on the New Technology.
@@ -43,7 +43,8 @@ textwindows int64_t CreateFileMappingNuma(
   hHandle = __imp_CreateFileMappingNumaW(
       opt_hFile, opt_lpFileMappingAttributes, flProtect, dwMaximumSizeHigh,
       dwMaximumSizeLow, opt_lpName, nndDesiredNumaNode);
-  if (!hHandle) __winerr();
+  if (!hHandle)
+    __winerr();
   NTTRACE("CreateFileMappingNuma(%ld, %s, %s, %'zu, %#hs) → %ld% m", opt_hFile,
           DescribeNtSecurityAttributes(opt_lpFileMappingAttributes),
           DescribeNtPageFlags(flProtect),

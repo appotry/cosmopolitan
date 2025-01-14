@@ -1,11 +1,11 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:4;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=4 sts=4 sw=4 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=4 sts=4 sw=4 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Python 3                                                                     │
 │ https://docs.python.org/3/license.html                                       │
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #include "libc/stdio/stdio.h"
-#include "libc/unicode/locale.h"
+#include "libc/str/locale.h"
 #include "third_party/python/Include/Python-ast.h"
 #include "third_party/python/Include/abstract.h"
 #include "third_party/python/Include/ast.h"
@@ -34,7 +34,6 @@
 #include "third_party/python/Include/token.h"
 #include "third_party/python/Include/traceback.h"
 #include "third_party/python/Include/unicodeobject.h"
-/* clang-format off */
 
 /* Python interpreter top-level routines, including init/exit */
 

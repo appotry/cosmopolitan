@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:4;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=4 sts=4 sw=4 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=4 sts=4 sw=4 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Python 3                                                                     │
 │ https://docs.python.org/3/license.html                                       │
@@ -9,6 +9,7 @@
 #include "third_party/python/Include/abstract.h"
 #include "third_party/python/Include/boolobject.h"
 #include "third_party/python/Include/bytesobject.h"
+#include "third_party/python/Include/ceval.h"
 #include "third_party/python/Include/descrobject.h"
 #include "third_party/python/Include/longobject.h"
 #include "third_party/python/Include/memoryobject.h"
@@ -16,12 +17,12 @@
 #include "third_party/python/Include/object.h"
 #include "third_party/python/Include/objimpl.h"
 #include "third_party/python/Include/pyerrors.h"
+#include "third_party/python/Include/pylifecycle.h"
 #include "third_party/python/Include/pymacro.h"
 #include "third_party/python/Include/pymem.h"
 #include "third_party/python/Include/pythread.h"
 #include "third_party/python/Include/structmember.h"
 #include "third_party/python/Modules/_io/_iomodule.h"
-/* clang-format off */
 
 /*
     An implementation of Buffered I/O as defined by PEP 3116 - "New I/O"

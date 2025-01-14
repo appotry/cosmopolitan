@@ -1,8 +1,7 @@
 #ifndef COSMOPOLITAN_TOOL_PLINKO_LIB_HISTO_H_
 #define COSMOPOLITAN_TOOL_PLINKO_LIB_HISTO_H_
-#include "libc/macros.internal.h"
-#include "libc/nexgen32e/bsr.h"
-#if !(__ASSEMBLER__ + __LINKER__ + 0)
+#include "libc/intrin/bsr.h"
+#include "libc/macros.h"
 COSMOPOLITAN_C_START_
 
 #define HISTO(H, X)                \
@@ -16,5 +15,4 @@ void PrintHistogram(int, const char *, const long *, size_t);
 long GetLongSum(const long *, size_t);
 
 COSMOPOLITAN_C_END_
-#endif /* !(__ASSEMBLER__ + __LINKER__ + 0) */
 #endif /* COSMOPOLITAN_TOOL_PLINKO_LIB_HISTO_H_ */

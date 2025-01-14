@@ -1,4 +1,3 @@
-/* clang-format off */
 /*
   unix/osdep.h - Zip 3
 
@@ -9,6 +8,12 @@
   If, for some reason, both of these files are missing, the Info-ZIP license
   also may be found at:  ftp://ftp.info-zip.org/pub/infozip/license.html
 */
+
+#ifdef NO_LARGE_FILE_SUPPORT
+# ifdef LARGE_FILE_SUPPORT
+#  undef LARGE_FILE_SUPPORT
+# endif
+#endif
 
 #ifdef LARGE_FILE_SUPPORT
   /* 64-bit Large File Support */
@@ -22,9 +27,21 @@
 # define _LARGE_FILES           /* some OSes need this for 64-bit off_t */
 #endif
 
+#include "libc/calls/makedev.h"
 #include "libc/calls/weirdtypes.h"
+#include "libc/thread/thread.h"
+#include "libc/calls/typedef/u.h"
+#include "libc/calls/weirdtypes.h"
+#include "libc/sock/select.h"
+#include "libc/sysv/consts/endian.h"
 #include "libc/calls/calls.h"
+#include "libc/calls/struct/stat.h"
+#include "libc/calls/struct/stat.macros.h"
+#include "libc/calls/struct/timespec.h"
+#include "libc/calls/weirdtypes.h"
 #include "libc/sysv/consts/s.h"
+#include "libc/sysv/consts/utime.h"
+#include "libc/time.h"
 
 /* printf format size prefix for zoff_t values */
 #ifdef LARGE_FILE_SUPPORT

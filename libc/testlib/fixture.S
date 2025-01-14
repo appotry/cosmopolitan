@@ -1,5 +1,5 @@
 /*-*- mode:unix-assembly; indent-tabs-mode:t; tab-width:8; coding:utf-8     -*-│
-│vi: set et ft=asm ts=8 tw=8 fenc=utf-8                                     :vi│
+│ vi: set noet ft=asm ts=8 sw=8 fenc=utf-8                                 :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2020 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -16,25 +16,25 @@
 │ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR             │
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
-#include "libc/macros.internal.h"
+#include "libc/macros.h"
 
 //	Decentralized section for test fixture registration.
 //
 //	@see	ape/ape.lds
-	.section .piro.relo.sort.fixture.1,"aw",@nobits
+	.section .piro.relo.sort.fixture.1,"aw",@progbits
 	.type	__fixture_start,@object
 	.type	__fixture_end,@object
 	.globl	__fixture_start,__fixture_end
 	.hidden	__fixture_start,__fixture_end
 	.byte	0
-	.align	__SIZEOF_POINTER__
+	.balign	__SIZEOF_POINTER__
 	.underrun
 __fixture_start:
 	.previous/*
 	...
 	decentralized content
 	...
-	*/.section .piro.relo.sort.fixture.3,"aw",@nobits
+	*/.section .piro.relo.sort.fixture.3,"aw",@progbits
 __fixture_end:
 	.quad	0
 	.overrun

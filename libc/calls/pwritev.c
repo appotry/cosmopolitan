@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2020 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -16,86 +16,117 @@
 │ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR             │
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
-#include "libc/bits/likely.h"
-#include "libc/bits/weaken.h"
-#include "libc/calls/calls.h"
+#include "libc/calls/cp.internal.h"
 #include "libc/calls/internal.h"
-#include "libc/calls/strace.internal.h"
 #include "libc/calls/struct/iovec.h"
+#include "libc/calls/struct/iovec.internal.h"
 #include "libc/calls/syscall-sysv.internal.h"
+#include "libc/calls/syscall_support-sysv.internal.h"
 #include "libc/dce.h"
 #include "libc/errno.h"
-#include "libc/intrin/asan.internal.h"
-#include "libc/intrin/describeflags.internal.h"
-#include "libc/intrin/kprintf.h"
-#include "libc/macros.internal.h"
-#include "libc/sysv/consts/iov.h"
+#include "libc/intrin/likely.h"
+#include "libc/intrin/strace.h"
+#include "libc/intrin/weaken.h"
+#include "libc/limits.h"
+#include "libc/mem/alloca.h"
+#include "libc/runtime/stack.h"
+#include "libc/stdckdint.h"
 #include "libc/sysv/errfuns.h"
-#include "libc/zipos/zipos.internal.h"
+
+static size_t SumIovecBytes(const struct iovec *iov, int iovlen) {
+  size_t count = 0;
+  for (int i = 0; i < iovlen; ++i)
+    if (ckd_add(&count, count, iov[i].iov_len))
+      count = SIZE_MAX;
+  return count;
+}
 
 static ssize_t Pwritev(int fd, const struct iovec *iov, int iovlen,
                        int64_t off) {
-  static bool once, demodernize;
-  int i, err;
-  ssize_t rc;
-  size_t sent, toto;
+  int i, e;
+  size_t sent;
+  ssize_t rc, toto;
 
-  if (fd < 0) return einval();
-  if (iovlen < 0) return einval();
-  if (IsAsan() && !__asan_is_valid_iov(iov, iovlen)) return efault();
-  if (fd < g_fds.n && g_fds.p[fd].kind == kFdZip) {
-    return weaken(__zipos_write)(
-        (struct ZiposHandle *)(intptr_t)g_fds.p[fd].handle, iov, iovlen, off);
-  } else if (IsWindows()) {
+  if (fd < 0)
+    return ebadf();
+  if (iovlen < 0)
+    return einval();
+  if (fd < g_fds.n && g_fds.p[fd].kind == kFdZip)
+    return ebadf();
+
+  // XNU and BSDs will EINVAL if requested bytes exceeds INT_MAX
+  // this is inconsistent with Linux which ignores huge requests
+  if (!IsLinux()) {
+    size_t sum, remain = 0x7ffff000;
+    if ((sum = SumIovecBytes(iov, iovlen)) > remain) {
+      struct iovec *iov2;
+#pragma GCC push_options
+#pragma GCC diagnostic ignored "-Walloca-larger-than="
+#pragma GCC diagnostic ignored "-Wanalyzer-out-of-bounds"
+      iov2 = alloca(iovlen * sizeof(struct iovec));
+      CheckLargeStackAllocation(iov2, iovlen * sizeof(struct iovec));
+#pragma GCC pop_options
+      for (int i = 0; i < iovlen; ++i) {
+        iov2[i] = iov[i];
+        if (remain >= iov2[i].iov_len) {
+          remain -= iov2[i].iov_len;
+        } else {
+          iov2[i].iov_len = remain;
+          remain = 0;
+        }
+      }
+      iov = iov2;
+    }
+  }
+
+  if (IsWindows()) {
     if (fd < g_fds.n) {
-      return sys_write_nt(fd, iov, iovlen, off);
+      if (g_fds.p[fd].kind == kFdSocket) {
+        return espipe();
+      } else {
+        return sys_write_nt(fd, iov, iovlen, off);
+      }
     } else {
       return ebadf();
     }
-  } else if (IsMetal()) {
-    return enosys();
   }
 
-  if (iovlen == 1) {
-    return sys_pwrite(fd, iov[0].iov_base, iov[0].iov_len, off, off);
+  if (IsMetal()) {
+    return espipe();  // must be serial or console if not zipos
   }
 
-  /*
-   * NT, 2018-era XNU, and 2007-era Linux don't support this system call
-   */
-  if (!once) {
-    err = errno;
-    rc = sys_pwritev(fd, iov, iovlen, off, off);
-    if (rc == -1 && errno == ENOSYS) {
-      errno = err;
-      once = true;
-      demodernize = true;
-      STRACE("demodernizing %s() due to %s", "pwritev", "ENOSYS");
-    } else {
-      once = true;
-      return rc;
-    }
-  }
-
-  if (!demodernize) {
-    return sys_pwritev(fd, iov, iovlen, off, off);
+  while (iovlen && !iov->iov_len) {
+    --iovlen;
+    ++iov;
   }
 
   if (!iovlen) {
-    return sys_pwrite(fd, NULL, 0, off, off);
+    return sys_pwrite(fd, 0, 0, off, off);
   }
+
+  if (iovlen == 1) {
+    return sys_pwrite(fd, iov->iov_base, iov->iov_len, off, off);
+  }
+
+  e = errno;
+  rc = sys_pwritev(fd, iov, iovlen, off, off);
+  if (rc != -1 || errno != ENOSYS)
+    return rc;
+  errno = e;
 
   for (toto = i = 0; i < iovlen; ++i) {
     rc = sys_pwrite(fd, iov[i].iov_base, iov[i].iov_len, off, off);
     if (rc == -1) {
-      if (toto && (errno == EINTR || errno == EAGAIN)) {
-        return toto;
-      } else {
-        return -1;
+      if (!toto) {
+        toto = -1;
+      } else if (errno != EINTR) {
+        notpossible;
       }
+      break;
     }
     sent = rc;
     toto += sent;
+    off += sent;
     if (sent != iov[i].iov_len) {
       break;
     }
@@ -112,19 +143,22 @@ static ssize_t Pwritev(int fd, const struct iovec *iov, int iovlen,
  * been committed. It can also happen if we need to polyfill this system
  * call using pwrite().
  *
+ * It's possible for file write request to be partially completed. For
+ * example, if the sum of `iov` lengths exceeds 0x7ffff000 then bytes
+ * beyond that will be ignored. This is a Linux behavior that Cosmo
+ * polyfills across platforms.
+ *
  * @return number of bytes actually sent, or -1 w/ errno
+ * @cancelationpoint
  * @asyncsignalsafe
  * @vforksafe
  */
 ssize_t pwritev(int fd, const struct iovec *iov, int iovlen, int64_t off) {
   ssize_t rc;
+  BEGIN_CANCELATION_POINT;
   rc = Pwritev(fd, iov, iovlen, off);
-#if defined(SYSDEBUG) && _DATATRACE
-  if (UNLIKELY(__strace > 0)) {
-    kprintf(STRACE_PROLOGUE "pwritev(%d, ", fd);
-    DescribeIov(iov, iovlen, rc != -1 ? rc : 0);
-    kprintf(", %d, %'ld) → %'ld% m\n", iovlen, off, rc);
-  }
-#endif
+  END_CANCELATION_POINT;
+  STRACE("pwritev(%d, %s, %d, %'ld) → %'ld% m", fd,
+         DescribeIovec(rc != -1 ? rc : -2, iov, iovlen), iovlen, off, rc);
   return rc;
 }

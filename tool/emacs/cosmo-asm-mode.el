@@ -51,12 +51,13 @@
            ;; lea x@tlsgd(,%rbx,1),%rdi
            ;; call __tls_get_addr@plt
            "tlsgd"
-           "tlsld" 
+           "tlsld"
            "dtpmod"
            "dtpoff"
            "gottpoff"
            "function"
            "object"
+           "notype"
            "got"
            "size"
            "gotoff"
@@ -64,9 +65,11 @@
            "pltoff"
            "gotpcrel"
            "progbits"
+           "note"
            "nobits"
            "init_array"
-           "fini_array")])
+           "fini_array"
+           "gnu_indirect_function")])
     "\\>"])
   "GNU Assembler section, relocation, macro param qualifiers.")
 
@@ -113,6 +116,7 @@
        "asyncsignalsafe"
        "notasyncsignalsafe"
        "isa"
+       "norestart"
        "mayalias"
        "sideffect")
       "\\>"]))
@@ -210,25 +214,7 @@
 
    cpp-font-lock-keywords
 
-   `(;; GNU-Style Assembler Comment (Ltd. 80x86 &c.)
-     ;;
-     ;;   - Valid
-     ;;
-     ;;     * #heyho
-     ;;     * # heyho
-     ;;     * .org . #heyho
-     ;;     * .org . ####euhhcue
-     ;;     * .org .# ###euhhcue
-     ;;
-     ;;   - Ignored
-     ;;
-     ;;     * #if 0
-     ;;     * #endif
-     ;;     * .ascii "#heyho"
-     ;;
-     ("\\(#.*\\)$" 1 font-lock-comment-face)
-
-     ("'\\(\\\\?.\\)\\>" 1 font-lock-constant-face)
+   `(("'\\(\\\\?.\\)\\>" 1 font-lock-constant-face)
 
      ;; Register Value
      ;;
@@ -291,7 +277,7 @@
       (1 font-lock-constant-face)
       (2 font-lock-constant-face))
 
-     ;; Bultin Constants
+     ;; Builtin Constants
      ;;
      ;;   - Valid
      ;;
@@ -350,9 +336,10 @@
   (set (make-local-variable 'indent-tabs-mode) t)
   (set (make-local-variable 'tab-width) 8))
 
-(progn
-  (add-hook 'asm-mode-hook 'cosmo-asm-supplemental-hook)
-  (setq asm-font-lock-keywords cosmo-asm-font-lock-keywords))
+(eval-after-load 'asm-mode
+  '(progn
+     (add-hook 'asm-mode-hook 'cosmo-asm-supplemental-hook)
+     (setq asm-font-lock-keywords cosmo-asm-font-lock-keywords)))
 
 ;; Make -*-unix-assembly-*- mode line work correctly like GitHub.
 (define-derived-mode unix-assembly-mode asm-mode "UNIX Assembly")

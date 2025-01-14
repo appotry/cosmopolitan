@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:4;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=4 sts=4 sw=4 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=4 sts=4 sw=4 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2021 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -17,18 +17,18 @@
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #include "libc/assert.h"
-#include "libc/bits/bits.h"
 #include "libc/calls/calls.h"
 #include "libc/calls/struct/iovec.h"
 #include "libc/calls/struct/stat.h"
 #include "libc/fmt/conv.h"
 #include "libc/log/check.h"
 #include "libc/log/log.h"
-#include "libc/runtime/gc.internal.h"
+#include "libc/mem/gc.h"
 #include "libc/runtime/runtime.h"
 #include "libc/sysv/consts/o.h"
 #include "libc/x/x.h"
-#include "third_party/getopt/getopt.h"
+#include "libc/x/xasprintf.h"
+#include "third_party/getopt/getopt.internal.h"
 #include "third_party/python/Include/bytesobject.h"
 #include "third_party/python/Include/compile.h"
 #include "third_party/python/Include/fileutils.h"
@@ -40,15 +40,15 @@
 #include "third_party/python/Include/pythonrun.h"
 #include "third_party/python/Include/ucnhash.h"
 #include "third_party/python/Include/yoink.h"
+#include "libc/serialize.h"
 #include "tool/build/lib/stripcomponents.h"
-/* clang-format off */
 
-STATIC_YOINK("_PyUnicode_GetCode");
+__static_yoink("_PyUnicode_GetCode");
 
 #define MANUAL "\
 SYNOPSIS\n\
 \n\
-  pycomp.com [FLAGS] SOURCE\n\
+  pycomp [FLAGS] SOURCE\n\
 \n\
 OVERVIEW\n\
 \n\
@@ -65,7 +65,7 @@ FLAGS\n\
 \n\
 EXAMPLE\n\
 \n\
-  pycomp.com -o foo/__pycache__/__init__.cpython-3.6.pyc foo/__init__.py\n\
+  pycomp -o foo/__pycache__/__init__.cpython-3.6.pyc foo/__init__.py\n\
 \n"
 
 int optimize;
@@ -76,7 +76,6 @@ void
 GetOpts(int argc, char *argv[])
 {
     int opt;
-    char *outdir;
     while ((opt = getopt(argc, argv, "hnO:o:")) != -1) {
         switch (opt) {
         case 'O':
@@ -113,7 +112,7 @@ main(int argc, char *argv[])
     ssize_t rc;
     size_t i, n;
     struct stat st;
-    char *s, *p, m[12];
+    char *p, m[12];
     PyObject *code, *marshalled;
     ShowCrashReports();
     GetOpts(argc, argv);
@@ -125,7 +124,7 @@ main(int argc, char *argv[])
     Py_IgnoreEnvironmentFlag++;
     Py_FrozenFlag++;
     /* Py_VerboseFlag++; */
-    Py_SetProgramName(gc(utf8toutf32(argv[0], -1, 0)));
+    Py_SetProgramName(gc(utf8to32(argv[0], -1, 0)));
     _Py_InitializeEx_Private(1, 0);
     name = gc(xjoinpaths("/zip/.python", StripComponents(inpath, 3)));
     code = Py_CompileStringExFlags(p, name, Py_file_input, NULL, optimize);

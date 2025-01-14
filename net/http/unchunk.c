@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2021 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -16,8 +16,9 @@
 │ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR             │
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
-#include "libc/macros.internal.h"
+#include "libc/macros.h"
 #include "libc/str/str.h"
+#include "libc/str/tab.h"
 #include "libc/sysv/errfuns.h"
 #include "net/http/escape.h"
 #include "net/http/http.h"
@@ -36,14 +37,16 @@ ssize_t Unchunk(struct HttpUnchunker *u, char *p, size_t n, size_t *l) {
     c = p[u->i++] & 255;
     switch (u->t) {
       case kHttpStateChunkStart:
-        if ((u->m = kHexToInt[c]) == -1) return ebadmsg();
+        if ((u->m = kHexToInt[c]) == -1)
+          return ebadmsg();
         u->t = kHttpStateChunkSize;
         break;
       case kHttpStateChunkSize:
         if ((h = kHexToInt[c]) != -1) {
           u->m *= 16;
           u->m += h;
-          if (u->m >= 0x0000010000000000) return ebadmsg();
+          if (u->m >= 0x0000010000000000)
+            return ebadmsg();
           break;
         }
         u->t = kHttpStateChunkExt;
@@ -57,7 +60,8 @@ ssize_t Unchunk(struct HttpUnchunker *u, char *p, size_t n, size_t *l) {
         }
         /* fallthrough */
       case kHttpStateChunkLf1:
-        if (c != '\n') return ebadmsg();
+        if (c != '\n')
+          return ebadmsg();
         u->t = u->m ? kHttpStateChunk : kHttpStateTrailerStart;
         break;
       case kHttpStateChunk:
@@ -67,7 +71,8 @@ ssize_t Unchunk(struct HttpUnchunker *u, char *p, size_t n, size_t *l) {
         u->i += s;
         u->j += s;
         u->m -= s;
-        if (!u->m) u->t = kHttpStateChunkCr2;
+        if (!u->m)
+          u->t = kHttpStateChunkCr2;
         break;
       case kHttpStateChunkCr2:
         if (c == '\r') {
@@ -76,7 +81,8 @@ ssize_t Unchunk(struct HttpUnchunker *u, char *p, size_t n, size_t *l) {
         }
         /* fallthrough */
       case kHttpStateChunkLf2:
-        if (c != '\n') return ebadmsg();
+        if (c != '\n')
+          return ebadmsg();
         u->t = kHttpStateChunkStart;
         break;
       case kHttpStateTrailerStart:
@@ -97,18 +103,22 @@ ssize_t Unchunk(struct HttpUnchunker *u, char *p, size_t n, size_t *l) {
         }
         /* fallthrough */
       case kHttpStateTrailerLf1:
-        if (c != '\n') return ebadmsg();
+        if (c != '\n')
+          return ebadmsg();
         u->t = kHttpStateTrailerStart;
         break;
       case kHttpStateTrailerLf2:
-        if (c != '\n') return ebadmsg();
+        if (c != '\n')
+          return ebadmsg();
       Finished:
-        if (l) *l = u->j;
-        if (u->j < n) p[u->j] = 0;
+        if (l)
+          *l = u->j;
+        if (u->j < n)
+          p[u->j] = 0;
         return u->i;
         break;
       default:
-        unreachable;
+        __builtin_unreachable();
     }
   }
   return 0;

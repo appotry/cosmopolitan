@@ -1,6 +1,5 @@
 #ifndef __FORWARD_H__
 #define __FORWARD_H__
-/* clang-format off */
 
 /* forward.h -- Forward declarations for major Tidy structures
 
@@ -17,6 +16,7 @@
 */
 
 #include "third_party/tidy/tidyplatform.h"
+#include "libc/str/str.h"
 #include "third_party/tidy/tidy.h"
 
 /* Internal symbols are prefixed to avoid clashes with other libraries */

@@ -1,37 +1,36 @@
 #ifndef COSMOPOLITAN_LIBC_CALLS_SIGNALS_INTERNAL_H_
 #define COSMOPOLITAN_LIBC_CALLS_SIGNALS_INTERNAL_H_
+#include "libc/atomic.h"
 #include "libc/calls/struct/sigset.h"
-#include "libc/calls/ucontext.h"
+#include "libc/nt/thunk/msabi.h"
+#include "libc/thread/posixthread.internal.h"
 
-#define __SIG_QUEUE_LENGTH        8
-#define __SIG_POLLING_INTERVAL_MS 50
-#define __SIG_LOGGING_INTERVAL_MS 1700
+#define SIG_HANDLED_NO_RESTART 1
+#define SIG_HANDLED_SA_RESTART 2
 
-#if !(__ASSEMBLER__ + __LINKER__ + 0)
 COSMOPOLITAN_C_START_
 
-struct Signal {
-  struct Signal *next;
-  bool used;
-  int sig;
-  int si_code;
-};
-
 struct Signals {
-  sigset_t mask;
-  struct Signal *queue;
-  struct Signal mem[__SIG_QUEUE_LENGTH];
+  atomic_ulong *process;
+  atomic_ulong count;
 };
 
-extern long __sig_count;
 extern struct Signals __sig;
 
-bool __sig_check(bool) hidden;
-bool __sig_handle(bool, int, int, ucontext_t *) hidden;
-int __sig_add(int, int) hidden;
-int __sig_mask(int, const sigset_t *, sigset_t *) hidden;
-int __sig_raise(int, int) hidden;
+bool __sig_ignored(int);
+int __sig_check(void);
+int __sig_crash_sig(unsigned, int *);
+int __sig_get(sigset_t);
+int __sig_kill(struct PosixThread *, int, int);
+int __sig_mask(int, const sigset_t *, sigset_t *);
+int __sig_raise(int, int);
+int __sig_relay(int, int, sigset_t);
+void __sig_delete(int);
+void __sig_generate(int, int);
+void __sig_init(void);
+
+__msabi char16_t *__sig_process_path(char16_t *, uint32_t, int);
+__msabi atomic_ulong *__sig_map_process(int, int);
 
 COSMOPOLITAN_C_END_
-#endif /* !(__ASSEMBLER__ + __LINKER__ + 0) */
 #endif /* COSMOPOLITAN_LIBC_CALLS_SIGNALS_INTERNAL_H_ */

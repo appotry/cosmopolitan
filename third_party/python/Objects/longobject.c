@@ -1,11 +1,11 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:4;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=4 sts=4 sw=4 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=4 sts=4 sw=4 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Python 3                                                                     │
 │ https://docs.python.org/3/license.html                                       │
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #include "libc/assert.h"
-#include "libc/bits/popcnt.h"
+#include "libc/intrin/popcnt.h"
 #include "libc/fmt/conv.h"
 #include "libc/limits.h"
 #include "libc/log/check.h"
@@ -26,7 +26,6 @@
 #include "third_party/python/Include/structseq.h"
 #include "third_party/python/Include/tupleobject.h"
 #include "third_party/python/Include/warnings.h"
-/* clang-format off */
 
 /* Long (arbitrary precision) integer object implementation */
 /* XXX The functional organization of this file is terrible */

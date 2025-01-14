@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2020 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -22,12 +22,14 @@
 #include "libc/sysv/consts/af.h"
 
 /**
- * Creates bidirectional pipe.
+ * Creates bidirectional pipe, e.g.
+ *
+ *     int sv[2];
+ *     socketpair(AF_UNIX, SOCK_STREAM, 0, sv);
  *
  * @param family should be AF_UNIX or synonymously AF_LOCAL
- * @param type can be SOCK_STREAM (for TCP), SOCK_DGRAM (e.g. UDP), or
- *     SOCK_RAW (IP) so long as IP_HDRINCL was passed to setsockopt();
- *     and additionally, may be or'd with SOCK_NONBLOCK, SOCK_CLOEXEC
+ * @param type can be SOCK_STREAM or SOCK_DGRAM and additionally,
+ *     may be or'd with SOCK_NONBLOCK, SOCK_CLOEXEC
  * @param sv a vector of 2 integers to store the created sockets
  * @return 0 if success, -1 in case of error
  * @error EFAULT, EPFNOSUPPORT, etc.
@@ -35,7 +37,8 @@
  * @asyncsignalsafe
  */
 int socketpair(int family, int type, int protocol, int sv[2]) {
-  if (family == AF_UNSPEC) family = AF_UNIX;
+  if (family == AF_UNSPEC)
+    family = AF_UNIX;
   if (!IsWindows()) {
     return sys_socketpair(family, type, protocol, sv);
   } else {

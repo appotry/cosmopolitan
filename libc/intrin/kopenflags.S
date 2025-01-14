@@ -1,5 +1,5 @@
 /*-*- mode:unix-assembly; indent-tabs-mode:t; tab-width:8; coding:utf-8     -*-│
-│vi: set et ft=asm ts=8 tw=8 fenc=utf-8                                     :vi│
+│ vi: set noet ft=asm ts=8 sw=8 fenc=utf-8                                 :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2021 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -17,33 +17,30 @@
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #include "libc/fmt/magnumstrs.internal.h"
-#include "libc/macros.internal.h"
+#include "libc/macros.h"
 
 	.macro	.e e s
 	.long	\e - kOpenFlags
-	.long	1f - kOpenFlags
+	.long	.L\@ - kOpenFlags
 	.rodata.str1.1
-1:	.string	"\s"
+.L\@:	.string	"\s"
 	.previous
 	.endm
 
 	.section .rodata
-	.align	4
+	.balign	4
 	.underrun
 kOpenFlags:
-	.e	O_RDWR,"RDWR"			// order matters
-	.e	O_RDONLY,"RDONLY"		//
-	.e	O_WRONLY,"WRONLY"		//
-	.e	O_ACCMODE,"ACCMODE"		// mask of prev three
 	.e	O_CREAT,"CREAT"			//
 	.e	O_EXCL,"EXCL"			//
 	.e	O_TRUNC,"TRUNC"			//
 	.e	O_CLOEXEC,"CLOEXEC"		//
 	.e	O_NONBLOCK,"NONBLOCK"		//
-	.e	O_DIRECTORY,"DIRECTORY"		//
+	.e	O_TMPFILE,"TMPFILE"		// linux
+	.e	O_UNLINK,"UNLINK"		// windows+unix
+	.e	O_DIRECTORY,"DIRECTORY"		// order matters
 	.e	O_DIRECT,"DIRECT"		// no-op on xnu/openbsd
 	.e	O_APPEND,"APPEND"		// weird on nt
-	.e	O_TMPFILE,"TMPFILE"		// linux, windows
 	.e	O_NOFOLLOW,"NOFOLLOW"		// unix
 	.e	O_SYNC,"SYNC"			// unix
 	.e	O_ASYNC,"ASYNC"			// unix
@@ -61,6 +58,7 @@ kOpenFlags:
 	.e	O_SEQUENTIAL,"SEQUENTIAL"	// windows
 	.e	O_COMPRESSED,"COMPRESSED"	// windows
 	.e	O_INDEXED,"INDEXED"		// windows
+	.e	O_LARGEFILE,"LARGEFILE"		//
 	.long	MAGNUM_TERMINATOR
 	.endobj	kOpenFlags,globl,hidden
 	.overrun

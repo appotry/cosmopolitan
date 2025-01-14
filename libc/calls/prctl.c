@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2022 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -17,51 +17,41 @@
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #include "libc/calls/calls.h"
-#include "libc/calls/strace.internal.h"
+#include "libc/calls/prctl.internal.h"
+#include "libc/calls/syscall-sysv.internal.h"
+#include "libc/dce.h"
 #include "libc/errno.h"
+#include "libc/intrin/describeflags.h"
+#include "libc/intrin/strace.h"
 #include "libc/sysv/consts/pr.h"
 #include "libc/sysv/errfuns.h"
-
-static const char *DescribePrctlOperation(int x) {
-  switch (x) {
-    case PR_SET_NO_NEW_PRIVS:
-      return "PR_SET_NO_NEW_PRIVS";
-    case PR_SET_SECCOMP:
-      return "PR_SET_SECCOMP";
-    case PR_GET_SECCOMP:
-      return "PR_GET_SECCOMP";
-    default:
-      return "PRCTL_???";
-  }
-}
 
 /**
  * Tunes process on Linux.
  *
- * @raise ENOSYS on non-Linux.
+ * @raise ENOSYS on non-Linux
  */
 int prctl(int operation, ...) {
   int rc;
   va_list va;
-  intptr_t a, b;
-  register intptr_t c asm("r10");
-  register intptr_t d asm("r8");
+  intptr_t a, b, c, d;
+
   va_start(va, operation);
   a = va_arg(va, intptr_t);
   b = va_arg(va, intptr_t);
   c = va_arg(va, intptr_t);
   d = va_arg(va, intptr_t);
   va_end(va);
+
   if (IsLinux()) {
-    asm volatile("syscall"
-                 : "=a"(rc)
-                 : "0"(157), "D"(operation), "S"(a), "d"(b), "r"(c), "r"(d)
-                 : "rcx", "r11", "memory");
-    if (rc > -4096u) errno = -rc, rc = -1;
+    rc = sys_prctl(operation, a, b, c, d);
+    if (rc < 0) {
+      errno = -rc;
+      rc = -1;
+    }
   } else {
     rc = enosys();
   }
-  STRACE("prctl(%s, %p, %p, %p, %p) → %d% m", DescribePrctlOperation(operation),
-         a, b, c, d, rc);
+
   return rc;
 }

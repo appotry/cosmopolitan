@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2020 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -16,82 +16,87 @@
 │ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR             │
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
-#include "libc/bits/weaken.h"
+#include "libc/assert.h"
+#include "libc/calls/calls.h"
+#include "libc/calls/createfileflags.internal.h"
 #include "libc/calls/internal.h"
 #include "libc/calls/state.internal.h"
+#include "libc/calls/struct/sigset.internal.h"
 #include "libc/calls/syscall_support-nt.internal.h"
-#include "libc/intrin/spinlock.h"
+#include "libc/errno.h"
+#include "libc/intrin/fds.h"
+#include "libc/intrin/kprintf.h"
+#include "libc/intrin/weaken.h"
 #include "libc/nt/files.h"
 #include "libc/nt/runtime.h"
+#include "libc/runtime/zipos.internal.h"
 #include "libc/sock/internal.h"
+#include "libc/str/str.h"
 #include "libc/sysv/consts/o.h"
 #include "libc/sysv/errfuns.h"
 
-/**
- * Implements dup(), dup2(), dup3(), and F_DUPFD for Windows.
- */
-textwindows int sys_dup_nt(int oldfd, int newfd, int flags, int start) {
-  int64_t rc, proc, handle;
-
-  // validate the api usage
-  if (oldfd < 0) return ebadf();
-  if (flags & ~O_CLOEXEC) return einval();
+// Implements dup(), dup2(), dup3(), and F_DUPFD for Windows.
+static textwindows int sys_dup_nt_impl(int oldfd, int newfd, int flags,
+                                       int start) {
+  int64_t rc, handle;
+  unassert(!(flags & ~O_CLOEXEC));
 
   __fds_lock();
 
-  if (oldfd >= g_fds.n ||
-      (g_fds.p[oldfd].kind != kFdFile && g_fds.p[oldfd].kind != kFdSocket &&
-       g_fds.p[oldfd].kind != kFdConsole)) {
+  if (!__isfdopen(oldfd) || newfd < -1) {
     __fds_unlock();
     return ebadf();
   }
 
   // allocate a new file descriptor
-  for (;;) {
-    if (newfd == -1) {
-      if ((newfd = __reservefd_unlocked(start)) == -1) {
-        __fds_unlock();
-        return -1;
-      }
-      break;
-    } else {
-      if (__ensurefds_unlocked(newfd) == -1) {
-        __fds_unlock();
-        return -1;
-      }
-      if (g_fds.p[newfd].kind) {
-        __fds_unlock();
-        close(newfd);
-        __fds_lock();
-      }
-      if (!g_fds.p[newfd].kind) {
-        g_fds.p[newfd].kind = kFdReserved;
-        break;
-      }
+  if (newfd == -1) {
+    if ((newfd = __reservefd_unlocked(start)) == -1) {
+      __fds_unlock();
+      return -1;
+    }
+  } else {
+    if (__ensurefds_unlocked(newfd) == -1) {
+      __fds_unlock();
+      return -1;
+    }
+    if (g_fds.p[newfd].kind) {
+      sys_close_nt(newfd, newfd);
     }
   }
 
-  handle = g_fds.p[oldfd].handle;
-  proc = GetCurrentProcess();
-
-  if (DuplicateHandle(proc, handle, proc, &g_fds.p[newfd].handle, 0, true,
-                      kNtDuplicateSameAccess)) {
-    g_fds.p[newfd].kind = g_fds.p[oldfd].kind;
-    g_fds.p[newfd].mode = g_fds.p[oldfd].mode;
-    g_fds.p[newfd].flags = g_fds.p[oldfd].flags & ~O_CLOEXEC;
-    if (flags & O_CLOEXEC) g_fds.p[newfd].flags |= O_CLOEXEC;
-    if (g_fds.p[oldfd].kind == kFdSocket && weaken(_dupsockfd)) {
-      g_fds.p[newfd].extra =
-          (intptr_t)weaken(_dupsockfd)((struct SockFd *)g_fds.p[oldfd].extra);
-    } else {
-      g_fds.p[newfd].extra = g_fds.p[oldfd].extra;
-    }
+  if (__isfdkind(oldfd, kFdZip)) {
+    handle = (intptr_t)_weaken(__zipos_keep)(
+        (struct ZiposHandle *)(intptr_t)g_fds.p[oldfd].handle);
     rc = newfd;
   } else {
-    __releasefd_unlocked(newfd);
-    rc = __winerr();
+    if (DuplicateHandle(GetCurrentProcess(), g_fds.p[oldfd].handle,
+                        GetCurrentProcess(), &handle, 0, true,
+                        kNtDuplicateSameAccess)) {
+      rc = newfd;
+    } else {
+      rc = __winerr();
+      __releasefd(newfd);
+      __fds_unlock();
+      return rc;
+    }
   }
 
+  g_fds.p[newfd] = g_fds.p[oldfd];
+  g_fds.p[newfd].handle = handle;
+  __cursor_ref(g_fds.p[newfd].cursor);
+  if (flags & _O_CLOEXEC) {
+    g_fds.p[newfd].flags |= _O_CLOEXEC;
+  } else {
+    g_fds.p[newfd].flags &= ~_O_CLOEXEC;
+  }
   __fds_unlock();
+  return rc;
+}
+
+textwindows int sys_dup_nt(int oldfd, int newfd, int flags, int start) {
+  int rc;
+  BLOCK_SIGNALS;
+  rc = sys_dup_nt_impl(oldfd, newfd, flags, start);
+  ALLOW_SIGNALS;
   return rc;
 }

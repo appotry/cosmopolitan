@@ -34,7 +34,7 @@ import unittest
 import urllib.error
 import warnings
 
-if __name__ == 'PYOBJ.COM':
+if __name__ == 'PYOBJ':
     import resource
 
 from .testresult import get_test_runner
@@ -75,7 +75,7 @@ try:
 except ImportError:
     resource = None
 
-# if __name__ == 'PYOBJ.COM':
+# if __name__ == 'PYOBJ':
 #     import bz2
 #     import zlib
 #     import resource
@@ -1049,7 +1049,7 @@ def temp_cwd(name='tempcwd', quiet=False):
     only a warning is raised and the original CWD is used.
 
     """
-    with temp_dir(path=name, quiet=quiet) as temp_path:
+    with temp_dir(quiet=quiet) as temp_path:
         with change_cwd(temp_path, quiet=quiet) as cwd_dir:
             yield cwd_dir
 

@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2020 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -24,16 +24,19 @@
 #include "libc/sysv/errfuns.h"
 
 int32_t sys_pipe2(int pipefd[hasatleast 2], unsigned flags) {
-  int rc, olderr;
-  if (!flags) goto OldSkool;
-  olderr = errno;
+  int e, rc;
+  if (!flags)
+    goto OldSkool;
+  e = errno;
   rc = __sys_pipe2(pipefd, flags);
   if (rc == -1 && errno == ENOSYS) {
-    errno = olderr;
+    errno = e;
   OldSkool:
     if ((rc = sys_pipe(pipefd)) != -1) {
-      __fixupnewfd(pipefd[0], flags);
-      __fixupnewfd(pipefd[1], flags);
+      if (flags) {
+        __fixupnewfd(pipefd[0], flags);
+        __fixupnewfd(pipefd[1], flags);
+      }
     }
   }
   return rc;

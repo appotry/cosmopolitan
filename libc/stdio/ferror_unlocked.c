@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=8 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=8 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2020 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -16,16 +16,18 @@
 │ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR             │
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
+#include "libc/errno.h"
+#include "libc/stdio/internal.h"
 #include "libc/stdio/stdio.h"
 
 /**
  * Returns nonzero if stream is in error state.
  *
  * @param f is file stream pointer
- * @return non-zero if and only if it's an error state
+ * @return non-zero w/ errno only if `f` is in error state
  * @note EOF doesn't count
  * @see ferror(), feof()
  */
 errno_t ferror_unlocked(FILE *f) {
-  return f->state > 0 ? f->state : 0;
+  return f->state > 0 ? (errno = f->state) : 0;
 }

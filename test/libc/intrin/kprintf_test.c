@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2021 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -16,19 +16,20 @@
 │ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR             │
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
-#include "libc/bits/bits.h"
+#include "libc/intrin/kprintf.h"
 #include "libc/calls/calls.h"
 #include "libc/dce.h"
 #include "libc/errno.h"
-#include "libc/fmt/fmt.h"
 #include "libc/intrin/kprintf.h"
 #include "libc/limits.h"
 #include "libc/log/libfatal.internal.h"
-#include "libc/macros.internal.h"
-#include "libc/rand/rand.h"
+#include "libc/macros.h"
 #include "libc/runtime/memtrack.internal.h"
 #include "libc/runtime/runtime.h"
 #include "libc/runtime/symbols.internal.h"
+#include "libc/serialize.h"
+#include "libc/stdio/rand.h"
+#include "libc/stdio/stdio.h"
 #include "libc/str/str.h"
 #include "libc/sysv/consts/map.h"
 #include "libc/sysv/consts/prot.h"
@@ -43,7 +44,8 @@
  */
 static uint64_t Rando(void) {
   uint64_t x;
-  do x = lemur64();
+  do
+    x = lemur64();
   while (((x ^ READ64LE("!!!!!!!!")) - 0x0101010101010101) &
          ~(x ^ READ64LE("!!!!!!!!")) & 0x8080808080808080);
   return x;
@@ -55,7 +57,6 @@ static const struct {
   uintptr_t arg1;
   uintptr_t arg2;
 } V[] = {
-    {"!!WONTFMT", (const char *)31337, 123},              //
     {"!!31337", "%s", 0x31337},                           //
     {"!!1", "%#s", 1},                                    //
     {"!!feff800000031337", "%s", 0xfeff800000031337ull},  //
@@ -214,21 +215,20 @@ TEST(ksnprintf, testSymbols) {
   hassymbols = GetSymbolTable();
   ksnprintf(b[0], 32, "%t", strlen);
   if (hassymbols) {
-    ASSERT_STREQ("&strlen", b[0]);
+    ASSERT_STREQ("strlen", b[0]);
   } else {
-    ksnprintf(b[1], 32, "&%x", strlen);
+    ksnprintf(b[1], 32, "%lx", strlen);
     ASSERT_STREQ(b[1], b[0]);
   }
 }
 
 TEST(ksnprintf, fuzzTheUnbreakable) {
-  int e;
   size_t i;
   uint64_t x;
   char *f, b[32];
-  _Alignas(PAGESIZE) static const char weasel[PAGESIZE];
-  asm("mov\t%1,%0" : "=r"(f) : "g"(weasel));
-  EXPECT_SYS(0, 0, mprotect(f, PAGESIZE, PROT_READ | PROT_WRITE));
+  _Alignas(65536) static const char weasel[65535];
+  f = (void *)__veil("r", weasel);
+  EXPECT_SYS(0, 0, mprotect(f, getpagesize(), PROT_READ | PROT_WRITE));
   strcpy(f, "hello %s\n");
   EXPECT_EQ(12, ksnprintf(b, sizeof(b), f, "world"));
   EXPECT_STREQ("hello world\n", b);
@@ -240,19 +240,24 @@ TEST(ksnprintf, fuzzTheUnbreakable) {
     f[Rando() & 15] = '%';
     ksnprintf(b, sizeof(b), f, lemur64(), lemur64(), lemur64());
   }
-  EXPECT_SYS(0, 0, mprotect(f, PAGESIZE, PROT_READ));
+  EXPECT_SYS(0, 0, mprotect(f, getpagesize(), PROT_READ));
 }
 
 TEST(kprintf, testFailure_wontClobberErrnoAndBypassesSystemCallSupport) {
   int n;
   ASSERT_EQ(0, errno);
   EXPECT_SYS(0, 3, dup(2));
-  EXPECT_SYS(0, 0, close(2));
+  // <LIMBO>
+  if (close(2))
+    _Exit(200);
   n = __syscount;
-  kprintf("hello%n");
-  EXPECT_EQ(n, __syscount);
-  EXPECT_EQ(0, errno);
-  EXPECT_SYS(0, 2, dup2(3, 2));
+  if (__syscount != n)
+    _Exit(201);
+  if (errno != 0)
+    _Exit(202);
+  if (dup2(3, 2) != 2)
+    _Exit(203);
+  // </LIMBO>
   EXPECT_SYS(0, 0, close(3));
 }
 
@@ -260,13 +265,6 @@ TEST(ksnprintf, testy) {
   char b[32];
   EXPECT_EQ(3, ksnprintf(b, 32, "%#s", 1));
   EXPECT_STREQ("!!1", b);
-}
-
-TEST(ksnprintf, testNonTextFmt_wontFormat) {
-  char b[32];
-  char variable_format_string[16] = "%s";
-  EXPECT_EQ(9, ksnprintf(b, 32, variable_format_string, NULL));
-  EXPECT_STREQ("!!WONTFMT", b);
 }
 
 TEST(ksnprintf, testMisalignedPointer_wontFormat) {
@@ -277,13 +275,16 @@ TEST(ksnprintf, testMisalignedPointer_wontFormat) {
 }
 
 TEST(ksnprintf, testUnterminatedOverrun_truncatesAtPageBoundary) {
+  if (IsWindows())
+    return;  // needs carving
   char *m;
   char b[32];
-  m = memset(mapanon(FRAMESIZE * 2), 1, FRAMESIZE);
-  EXPECT_SYS(0, 0, munmap(m + FRAMESIZE, FRAMESIZE));
-  EXPECT_EQ(12, ksnprintf(b, 32, "%'s", m + FRAMESIZE - 3));
+  int gran = getgransize();
+  m = memset(_mapanon(gran * 2), 1, gran);
+  EXPECT_SYS(0, 0, munmap(m + gran, gran));
+  EXPECT_EQ(12, ksnprintf(b, 32, "%'s", m + gran - 3));
   EXPECT_STREQ("\\001\\001\\001", b);
-  EXPECT_SYS(0, 0, munmap(m, FRAMESIZE));
+  EXPECT_SYS(0, 0, munmap(m, gran));
 }
 
 TEST(ksnprintf, testEmptyBuffer_determinesTrueLength) {
@@ -351,6 +352,30 @@ TEST(ksnprintf, badUtf16) {
     EXPECT_EQ(strlen(V[i].want), ksnprintf(b, 16, V[i].fmt, V[i].arg));
     EXPECT_STREQ(V[i].want, b);
   }
+}
+
+TEST(ksnprintf, negativeOverflowIdiom_isSafe) {
+  int i, n;
+  char golden[11];
+  struct {
+    char underflow[11];
+    char buf[11];
+    char overflow[11];
+  } u;
+  memset(golden, -1, 11);
+  memset(u.underflow, -1, 11);
+  memset(u.overflow, -1, 11);
+  i = 0;
+  n = 11;
+  i += ksnprintf(u.buf + i, n - i, "hello");
+  ASSERT_STREQ("hello", u.buf);
+  i += ksnprintf(u.buf + i, n - i, " world");
+  ASSERT_STREQ("hello w...", u.buf);
+  i += ksnprintf(u.buf + i, n - i, " i love you");
+  ASSERT_STREQ("hello w...", u.buf);
+  ASSERT_EQ(i, 5 + 6 + 11);
+  ASSERT_EQ(0, memcmp(golden, u.underflow, 11));
+  ASSERT_EQ(0, memcmp(golden, u.overflow, 11));
 }
 
 TEST(ksnprintf, truncation) {

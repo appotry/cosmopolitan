@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2021 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -17,7 +17,7 @@
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #include "libc/errno.h"
-#include "libc/macros.internal.h"
+#include "libc/macros.h"
 #include "libc/mem/mem.h"
 
 /**
@@ -35,9 +35,9 @@
  * @param bytes is number of bytes to allocate
  * @return return 0 or EINVAL or ENOMEM w/o setting errno
  * @see memalign()
- * @threadsafe
+ * @returnserrno
  */
-int posix_memalign(void **pp, size_t alignment, size_t bytes) {
+errno_t posix_memalign(void **pp, size_t alignment, size_t bytes) {
   int e;
   void *m;
   size_t q, r;
@@ -46,11 +46,11 @@ int posix_memalign(void **pp, size_t alignment, size_t bytes) {
   if (!r && q && IS2POW(q)) {
     e = errno;
     m = memalign(alignment, bytes);
-    errno = e;
     if (m) {
       *pp = m;
       return 0;
     } else {
+      errno = e;
       return ENOMEM;
     }
   } else {

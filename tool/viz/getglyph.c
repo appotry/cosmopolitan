@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2021 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -16,17 +16,19 @@
 │ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR             │
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
+#include "libc/calls/struct/sigaction.h"
 #include "libc/fmt/conv.h"
 #include "libc/limits.h"
 #include "libc/log/log.h"
-#include "libc/macros.internal.h"
-#include "libc/runtime/gc.internal.h"
-#include "libc/stdio/append.internal.h"
+#include "libc/macros.h"
+#include "libc/mem/gc.h"
+#include "libc/mem/mem.h"
+#include "libc/stdio/append.h"
 #include "libc/stdio/stdio.h"
-#include "libc/str/tpenc.h"
+#include "libc/str/str.h"
 #include "libc/sysv/consts/sig.h"
 #include "libc/x/x.h"
-#include "third_party/getopt/getopt.h"
+#include "third_party/getopt/getopt.internal.h"
 #include "third_party/stb/stb_truetype.h"
 
 #define SQR(x) ((x) * (x))
@@ -57,7 +59,8 @@ static char *Raster(int yn, int xn, unsigned char Y[yn][xn], int *dw) {
   int y, x, i, j, k, s, w, bi, bs;
   *dw = 0;
   for (y = 0; y < yn; y += 4) {
-    if (y) appendw(&r, '\n');
+    if (y)
+      appendw(&r, '\n');
     for (w = x = 0; x < xn; x += 4) {
       for (i = 0; i < 4; ++i) {
         for (j = 0; j < 4; ++j) {
@@ -85,7 +88,8 @@ static char *Raster(int yn, int xn, unsigned char Y[yn][xn], int *dw) {
       appendw(&r, tpenc(kBlocks[bi].c));
       ++w;
     }
-    if (w > *dw) *dw = w;
+    if (w > *dw)
+      *dw = w;
   }
   return r;
 }
@@ -102,14 +106,12 @@ int main(int argc, char *argv[]) {
   char **rasters;
   char **fasters;
   size_t ttfsize;
-  const char *dir;
   bool isdifferent;
   unsigned char **ttf;
   stbtt_fontinfo *font;
   int c, i, j, m, o, dw, maxw, *w, *h, s = 40 * 4;
-  struct sigaction sa = {.sa_handler = OnSig};
   ShowCrashReports();
-  sigaction(SIGPIPE, &sa, 0);
+  signal(SIGPIPE, OnSig);
   start = 0;
   end = 0x10FFFD;
   while ((o = getopt(argc, argv, "vdc:s:e:S:")) != -1) {
@@ -171,7 +173,8 @@ int main(int argc, char *argv[]) {
                 strcmp(rasters[j], rasters[j - 1])) {
               isdifferent = true;
             }
-            if (dw > maxw) maxw = dw;
+            if (dw > maxw)
+              maxw = dw;
           }
         }
         free(bmap);
@@ -189,7 +192,8 @@ int main(int argc, char *argv[]) {
               continue;
             }
             p = strchrnul(rasters[j], '\n');
-            if (p - rasters[j]) gotsome = true;
+            if (p - rasters[j])
+              gotsome = true;
             printf("%-*.*s    ", maxw, p - rasters[j], rasters[j]);
             rasters[j] = *p ? p + 1 : p;
           }

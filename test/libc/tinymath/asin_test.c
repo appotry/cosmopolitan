@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2021 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -17,11 +17,11 @@
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #include "libc/math.h"
-#include "libc/rand/rand.h"
-#include "libc/runtime/gc.internal.h"
+#include "libc/mem/gc.h"
+#include "libc/stdio/rand.h"
 #include "libc/testlib/ezbench.h"
 #include "libc/testlib/testlib.h"
-#include "libc/x/x.h"
+#include "libc/x/xasprintf.h"
 
 double asin_(double) asm("asin");
 #define asin asin_
@@ -44,10 +44,11 @@ TEST(asin, test) {
   EXPECT_TRUE(isnan(asin(__DBL_MAX__)));
 }
 
-BENCH(asin, bench) {
-  EZBENCH2("asin(+0)", donothing, asin(0));
-  EZBENCH2("asin(-0)", donothing, asin(-0.));
-  EZBENCH2("asin(NAN)", donothing, asin(NAN));
-  EZBENCH2("asin(INFINITY)", donothing, asin(INFINITY));
-  EZBENCH_C("asin", _real1(lemur64()), asin(_real1(lemur64())));
+BENCH(asinl, bench) {
+  double _asin(double) asm("asin");
+  float _asinf(float) asm("asinf");
+  long double _asinl(long double) asm("asinl");
+  EZBENCH2("-asin", donothing, _asin(.7));   /* ~16ns */
+  EZBENCH2("-asinf", donothing, _asinf(.7)); /* ~12ns */
+  EZBENCH2("-asinl", donothing, _asinl(.7)); /* ~39ns */
 }

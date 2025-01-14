@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2020 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -16,15 +16,14 @@
 │ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR             │
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
-#include "libc/bits/weaken.h"
 #include "libc/calls/calls.h"
-#include "libc/calls/strace.internal.h"
 #include "libc/calls/syscall-sysv.internal.h"
 #include "libc/dce.h"
-#include "libc/intrin/asan.internal.h"
-#include "libc/intrin/describeflags.internal.h"
+#include "libc/intrin/describeflags.h"
+#include "libc/intrin/strace.h"
+#include "libc/intrin/weaken.h"
+#include "libc/runtime/zipos.internal.h"
 #include "libc/sysv/errfuns.h"
-#include "libc/zipos/zipos.internal.h"
 
 /**
  * Changes owner and/or group of path.
@@ -34,6 +33,7 @@
  * @param gid is group id, or -1 to not change
  * @param flags can have AT_SYMLINK_NOFOLLOW, etc.
  * @return 0 on success, or -1 w/ errno
+ * @raise EROFS if `dirfd` or `path` use zip file system
  * @see chown(), lchown() for shorthand notation
  * @see /etc/passwd for user ids
  * @see /etc/group for group ids
@@ -42,15 +42,12 @@
 int fchownat(int dirfd, const char *path, uint32_t uid, uint32_t gid,
              int flags) {
   int rc;
-  char sb[12];
-  if (IsAsan() && !__asan_is_valid(path, 1)) {
-    rc = efault();
-  } else if (weaken(__zipos_notat) && (rc = __zipos_notat(dirfd, path)) == -1) {
-    STRACE("zipos fchownat not supported yet");
+  if (_weaken(__zipos_notat) && (rc = __zipos_notat(dirfd, path)) == -1) {
+    rc = erofs();
   } else {
     rc = sys_fchownat(dirfd, path, uid, gid, flags);
   }
-  STRACE("fchownat(%s, %#s, %d, %d, %#b) → %d% m", DescribeDirfd(sb, dirfd),
-         path, uid, gid, flags, rc);
+  STRACE("fchownat(%s, %#s, %d, %d, %#b) → %d% m", DescribeDirfd(dirfd), path,
+         uid, gid, flags, rc);
   return rc;
 }

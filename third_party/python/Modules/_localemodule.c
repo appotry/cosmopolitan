@@ -1,12 +1,13 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:4;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=4 sts=4 sw=4 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=4 sts=4 sw=4 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Python 3                                                                     │
 │ https://docs.python.org/3/license.html                                       │
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #define PY_SSIZE_T_CLEAN
-#include "libc/unicode/langinfo.h"
-#include "libc/unicode/locale.h"
+#include "libc/str/langinfo.h"
+#include "libc/str/locale.h"
+#include "libc/str/unicode.h"
 #include "third_party/python/Include/dictobject.h"
 #include "third_party/python/Include/fileutils.h"
 #include "third_party/python/Include/import.h"
@@ -19,7 +20,6 @@
 #include "third_party/python/Include/pymem.h"
 #include "third_party/python/Include/unicodeobject.h"
 #include "third_party/python/Include/yoink.h"
-/* clang-format off */
 
 PYTHON_PROVIDE("_locale");
 PYTHON_PROVIDE("_locale.CHAR_MAX");
@@ -776,7 +776,12 @@ indent-tabs-mode: nil
 End:
 */
 
-_Section(".rodata.pytab.1") const struct _inittab _PyImport_Inittab__locale = {
+#ifdef __aarch64__
+_Section(".rodata.pytab.1 //")
+#else
+_Section(".rodata.pytab.1")
+#endif
+ const struct _inittab _PyImport_Inittab__locale = {
     "_locale",
     PyInit__locale,
 };

@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2022 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -16,13 +16,8 @@
 │ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR             │
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
-#include "libc/nexgen32e/threaded.h"
+#include "libc/thread/tls.h"
 
-/**
- * Contains TID of main thread or 0 if threading isn't enabled.
- */
-int __threaded;
-
-bool __tls_enabled;
-
+#ifndef __x86_64__
 unsigned __tls_index;
+#endif

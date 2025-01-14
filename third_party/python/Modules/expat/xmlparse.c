@@ -3,17 +3,17 @@
 #include "libc/calls/struct/timeval.h"
 #include "libc/errno.h"
 #include "libc/limits.h"
+#include "libc/mem/mem.h"
 #include "libc/nexgen32e/rdtsc.h"
 #include "libc/nexgen32e/x86feature.h"
-#include "libc/rand/rand.h"
+#include "libc/stdio/rand.h"
 #include "libc/runtime/runtime.h"
 #include "libc/stdio/stdio.h"
 #include "libc/str/str.h"
 #include "libc/sysv/consts/grnd.h"
-#include "libc/time/time.h"
+#include "libc/time.h"
 #include "third_party/python/Modules/expat/expat.h"
 #include "third_party/python/Modules/expat/expat_config.h"
-/* clang-format off */
 /* f2d0ab6d1d4422a08cf1cf3bbdfba96b49dea42fb5ff4615e03a2a25c306e769 (2.2.8+)
                             __  __            _
                          ___\ \/ /_ __   __ _| |_
@@ -46,11 +46,9 @@
    USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-asm(".ident\t\"\\n\\n\
-expat (MIT License)\\n\
-Copyright (c) 1997-2000 Thai Open Source Software Center Ltd\\n\
-Copyright (c) 2000-2017 Expat development team\"");
-asm(".include \"libc/disclaimer.inc\"");
+__notice(expat_notice, "expat (MIT License)\n\
+Copyright (c) 1997-2000 Thai Open Source Software Center Ltd\n\
+Copyright (c) 2000-2017 Expat development team");
 
 #define XML_BUILDING_EXPAT 1
 

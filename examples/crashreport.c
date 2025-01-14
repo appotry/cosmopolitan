@@ -7,8 +7,7 @@
 │   • http://creativecommons.org/publicdomain/zero/1.0/            │
 ╚─────────────────────────────────────────────────────────────────*/
 #endif
-#include "libc/log/log.h"
-#include "libc/runtime/symbols.internal.h"
+#include <cosmo.h>
 
 /**
  * @fileoverview How to print backtraces and cpu state on crash.
@@ -23,8 +22,22 @@
  *     o//examples/crashreport.com
  */
 
-noubsan int main(int argc, char *argv[]) {
-  volatile int64_t x;
+int Divide(int x, int y) {
+  volatile int z = 0;  // force creation of stack frame
+  return x / y + z;
+}
+
+int (*pDivide)(int, int) = Divide;
+
+dontubsan int main(int argc, char *argv[]) {
+  kprintf("----------------\n");
+  kprintf(" THIS IS A TEST \n");
+  kprintf("SIMULATING CRASH\n");
+  kprintf("----------------\n");
+
   ShowCrashReports();
-  return 1 / (x = 0);
+
+  pDivide(1, 0);
+  pDivide(2, 0);
+  pDivide(3, 0);
 }

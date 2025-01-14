@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=8 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=8 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2020 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -16,7 +16,9 @@
 │ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR             │
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
-#include "libc/stdio/stdio.h"
+#include "libc/intrin/describeflags.h"
+#include "libc/intrin/strace.h"
+#include "libc/stdio/internal.h"
 
 /**
  * Writes data to stream.
@@ -24,12 +26,13 @@
  * @param stride specifies the size of individual items
  * @param count is the number of strides to write
  * @return count on success, [0,count) on EOF, 0 on error or count==0
- * @threadsafe
  */
 size_t fwrite(const void *data, size_t stride, size_t count, FILE *f) {
   size_t rc;
   flockfile(f);
   rc = fwrite_unlocked(data, stride, count, f);
+  STDIOTRACE("fwrite(%p, %'zu, %'zu, %p) → %'zu %s", data, stride, count, f, rc,
+             DescribeStdioState(f->state));
   funlockfile(f);
   return rc;
 }

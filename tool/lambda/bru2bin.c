@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2022 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -18,9 +18,13 @@
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #include "libc/calls/calls.h"
 #include "libc/intrin/kprintf.h"
+#include "libc/mem/mem.h"
+#include "libc/runtime/runtime.h"
 #include "libc/stdio/stdio.h"
-#include "libc/unicode/locale.h"
-#include "third_party/getopt/getopt.h"
+#include "libc/str/locale.h"
+#include "libc/str/str.h"
+#include "libc/wctype.h"
+#include "third_party/getopt/getopt.internal.h"
 
 #define USAGE \
   " [-?h01] <lambda.txt >binary.txt\n\
@@ -112,7 +116,8 @@ static int Greed(void) {
     } else {
       c = fgetwc(stdin);
     }
-    if (c == EOF) return c;
+    if (c == EOF)
+      return c;
     if (!t) {
       if (c == '#' || c == ';') {
         t = 1;
@@ -215,16 +220,18 @@ static int Greed(void) {
 
 static int Need(void) {
   int c;
-  if ((c = Greed()) != EOF) return c;
+  if ((c = Greed()) != EOF)
+    return c;
   Error(1, "unfinished expression");
 }
 
 static struct Node *Parse1(void) {
   wint_t c;
   int i, oldsp;
-  struct Node *r, *p, *q, *s;
+  struct Node *r, *p, *q;
   do {
-    if ((c = Greed()) == EOF) return 0;
+    if ((c = Greed()) == EOF)
+      return 0;
   } while (iswspace(c));
   if (c == L'λ' || c == '\\') {
     oldsp = sp;
@@ -242,7 +249,8 @@ static struct Node *Parse1(void) {
       }
     }
     q = Parse1();
-    if (!q) Error(4, "lambda needs body");
+    if (!q)
+      Error(4, "lambda needs body");
     p->l = q;
     while ((q = Parse1())) {
       p->l = NewNode(2, 0, p->l, q);
@@ -258,23 +266,27 @@ static struct Node *Parse1(void) {
       i *= 10;
       i += c - '0';
       c = Greed();
-      if (c == EOF) break;
+      if (c == EOF)
+        break;
       if (!iswdigit(c)) {
         unget = c;
         break;
       }
     }
     i -= indexing;
-    if (i < 0) Error(5, "undefined variable: %lc", c);
+    if (i < 0)
+      Error(5, "undefined variable: %lc", c);
     return NewNode(1, i, 0, 0);
   } else if (c == '(') {
     p = r = Parse1();
-    if (!p) Error(6, "empty parenthesis");
+    if (!p)
+      Error(6, "empty parenthesis");
     while ((q = Parse1())) {
       r = NewNode(2, 0, r, q);
     }
     c = Need();
-    if (c != ')') Error(7, "expected closing parenthesis");
+    if (c != ')')
+      Error(7, "expected closing parenthesis");
     return r;
   } else if (c == ')') {
     unget = c;
@@ -285,11 +297,10 @@ static struct Node *Parse1(void) {
 }
 
 static struct Node *Parse(void) {
-  wint_t c;
-  int i, oldsp;
-  struct Node *r, *p, *q, *s;
+  struct Node *r, *p, *q;
   p = r = Parse1();
-  if (!p) Error(6, "empty expression");
+  if (!p)
+    Error(6, "empty expression");
   while ((q = Parse1())) {
     r = NewNode(2, 0, r, q);
   }

@@ -1,5 +1,5 @@
 /*-*- mode:unix-assembly; indent-tabs-mode:t; tab-width:8; coding:utf-8     -*-│
-│vi: set et ft=asm ts=8 tw=8 fenc=utf-8                                     :vi│
+│ vi: set noet ft=asm ts=8 sw=8 fenc=utf-8                                 :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2021 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -17,18 +17,18 @@
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #include "libc/fmt/magnumstrs.internal.h"
-#include "libc/macros.internal.h"
+#include "libc/macros.h"
 
 	.macro	.e e s
 	.long	\e - kErrnoDocs
-	.long	1f - kErrnoDocs
+	.long	.L\@ - kErrnoDocs
 	.rodata.str1.1
-1:	.asciz	"\s"
+.L\@:	.asciz	"\s"
 	.previous
 	.endm
 
 	.section .rodata
-	.align 4
+	.balign 4
 	.underrun
 kErrnoDocs:
 	.e	EINVAL,"Invalid argument"
@@ -74,7 +74,6 @@ kErrnoDocs:
 	.e	ELOOP,"Too many symbolic links encountered"
 	.e	ENOMSG,"No message of desired type"
 	.e	EIDRM,"Identifier removed"
-	.e	ETIME,"Timer expired"
 	.e	EPROTO,"Protocol error"
 	.e	EOVERFLOW,"Value too large for defined data type"
 	.e	EILSEQ,"Illegal byte sequence"
@@ -103,6 +102,7 @@ kErrnoDocs:
 	.e	ESHUTDOWN,"Cannot send after transport endpoint shutdown"
 	.e	ETOOMANYREFS,"Too many references: cannot splice"
 	.e	ETIMEDOUT,"Connection timed out"
+	.e	ETIME,"Timer expired"
 	.e	ECONNREFUSED,"Connection refused"
 	.e	EHOSTDOWN,"Host is down"
 	.e	EHOSTUNREACH,"No route to host"
@@ -116,6 +116,7 @@ kErrnoDocs:
 	.e	ENOTRECOVERABLE,"State not recoverable"
 	.e	ENONET,"Machine is not on the network"
 	.e	ERESTART,"Interrupted system call should be restarted"
+	.e	EBADFD,"File descriptor in bad state"
 	.long	MAGNUM_TERMINATOR
 	.endobj	kErrnoDocs,globl,hidden
 	.overrun

@@ -1,10 +1,10 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:4;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=4 sts=4 sw=4 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=4 sts=4 sw=4 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Python 3                                                                     │
 │ https://docs.python.org/3/license.html                                       │
 ╚─────────────────────────────────────────────────────────────────────────────*/
-#include "libc/bits/weaken.h"
+#include "libc/intrin/weaken.h"
 #include "libc/stdio/stdio.h"
 #include "third_party/python/Include/abstract.h"
 #include "third_party/python/Include/bytesobject.h"
@@ -22,7 +22,6 @@
 #include "third_party/python/Include/tupleobject.h"
 #include "third_party/python/Include/ucnhash.h"
 #include "third_party/python/Modules/unicodedata.h"
-/* clang-format off */
 
 /* ------------------------------------------------------------------------
 
@@ -1009,14 +1008,14 @@ PyObject *PyCodec_NameReplaceErrors(PyObject *exc)
             return NULL;
         for (i = start, ressize = 0; i < end; ++i) {
             /* object is guaranteed to be "ready" */
-            if (!weaken(_PyUnicode_GetUcName)) {
+            if (!_weaken(_PyUnicode_GetUcName)) {
                 PyErr_SetString(
                     PyExc_UnicodeError,
                     "_PyUnicode_GetUcName() not available");
                 return NULL;
             }
             c = PyUnicode_READ_CHAR(object, i);
-            if (weaken(_PyUnicode_GetUcName)(NULL, c, buffer, sizeof(buffer), 1)) {
+            if (_weaken(_PyUnicode_GetUcName)(NULL, c, buffer, sizeof(buffer), 1)) {
                 replsize = 1+1+1+(int)strlen(buffer)+1;
             }
             else if (c >= 0x10000) {

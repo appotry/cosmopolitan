@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:t;c-basic-offset:8;tab-width:8;coding:utf-8   -*-│
-│vi: set et ft=c ts=8 tw=8 fenc=utf-8                                       :vi│
+│ vi: set noet ft=c ts=8 sw=8 fenc=utf-8                                   :vi │
 ╚──────────────────────────────────────────────────────────────────────────────╝
 │                                                                              │
 │  smallz4cat                                                                  │
@@ -28,8 +28,10 @@
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #include "libc/calls/calls.h"
 #include "libc/mem/mem.h"
-#include "libc/runtime/gc.internal.h"
+#include "libc/mem/gc.h"
+#include "libc/runtime/runtime.h"
 #include "libc/stdio/stdio.h"
+#include "libc/str/str.h"
 
 /**
  * @fileoverview shorter, more readable, albeit slower re-implementation

@@ -1,4 +1,3 @@
-// clang-format off
 /*
   Copyright (c) 1990-2008 Info-ZIP.  All rights reserved.
 
@@ -69,6 +68,7 @@
 #define __UNSHRINK_C    /* identifies this source module */
 #define UNZIP_INTERNAL
 #include "third_party/unzip/unzip.h"
+#include "third_party/unzip/globals.h"
 
 
 #ifndef LZW_CLEAN

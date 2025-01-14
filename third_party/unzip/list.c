@@ -1,4 +1,3 @@
-// clang-format off
 /*
   Copyright (c) 1990-2009 Info-ZIP.  All rights reserved.
 
@@ -23,6 +22,7 @@
 
 #define UNZIP_INTERNAL
 #include "third_party/unzip/unzip.h"
+#include "third_party/unzip/globals.h"
 
 
 #ifdef TIMESTAMP

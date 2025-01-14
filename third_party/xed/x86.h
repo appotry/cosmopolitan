@@ -27,6 +27,13 @@
 #define XED_HINT_TAKEN  4
 #define XED_HINT_ALTER  6
 
+#define XED_SEG_ES 1
+#define XED_SEG_CS 2
+#define XED_SEG_SS 3
+#define XED_SEG_DS 4
+#define XED_SEG_FS 5
+#define XED_SEG_GS 6
+
 #define xed_modrm_mod(M)           (((M)&0xff) >> 6)
 #define xed_modrm_reg(M)           (((M)&0b00111000) >> 3)
 #define xed_modrm_rm(M)            ((M)&7)
@@ -35,7 +42,6 @@
 #define xed_sib_scale(M)           (((M)&0xff) >> 6)
 #define xed_get_modrm_reg_field(M) (((M)&0x38) >> 3)
 
-#if !(__ASSEMBLER__ + __LINKER__ + 0)
 COSMOPOLITAN_C_START_
 
 #define XED_MACHINE_MODE_REAL           XED_MODE_REAL
@@ -239,5 +245,4 @@ int xed_instruction_length_decode(struct XedDecodedInst *, const void *,
                                   size_t);
 
 COSMOPOLITAN_C_END_
-#endif /* !(__ASSEMBLER__ + __LINKER__ + 0) */
 #endif /* COSMOPOLITAN_THIRD_PARTY_XED_X86_H_ */

@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2021 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -16,15 +16,12 @@
 │ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR             │
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
-#include "libc/bits/bits.h"
-#include "libc/intrin/kprintf.h"
-#include "libc/stdio/append.internal.h"
+#include "libc/mem/mem.h"
+#include "libc/serialize.h"
+#include "libc/stdio/append.h"
+#include "libc/str/str.h"
 #include "libc/testlib/ezbench.h"
 #include "libc/testlib/testlib.h"
-
-static void PrintMemory(void *p) {
-  kprintf("%#.*hhs%n", malloc_usable_size(p), p);
-}
 
 TEST(vappendf, test) {
   char *b = 0;
@@ -174,7 +171,6 @@ TEST(appendd, nontrivialAmountOfMemory) {
 }
 
 BENCH(vappendf, bench) {
-  const char t[] = {0};
   char *b = 0;
   EZBENCH2("appendf", donothing, appendf(&b, "hello"));
   EZBENCH2("kappendf", donothing, kappendf(&b, "hello"));

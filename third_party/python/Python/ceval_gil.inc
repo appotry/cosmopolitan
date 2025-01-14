@@ -1,11 +1,14 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:4;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=4 sts=4 sw=4 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=4 sts=4 sw=4 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Python 3                                                                     │
 │ https://docs.python.org/3/license.html                                       │
 ╚─────────────────────────────────────────────────────────────────────────────*/
+#include "libc/calls/struct/timespec.h"
+#include "libc/calls/struct/timeval.h"
+#include "libc/thread/thread2.h"
+#include "third_party/python/Include/pylifecycle.h"
 #include "third_party/python/Python/condvar.h"
-/* clang-format off */
 
 /*
  * Implementation of the Global Interpreter Lock (GIL).

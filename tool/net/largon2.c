@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:t;c-basic-offset:8;tab-width:8;coding:utf-8   -*-│
-│vi: set et ft=c ts=8 tw=8 fenc=utf-8                                       :vi│
+│ vi: set et ft=c ts=8 sw=8 fenc=utf-8                                     :vi │
 ╚──────────────────────────────────────────────────────────────────────────────╝
 │                                                                              │
 │  largon2                                                                     │
@@ -32,10 +32,9 @@
 #include "third_party/lua/lua.h"
 #include "third_party/lua/lualib.h"
 
-asm(".ident\t\"\\n\\n\
-largon2 (MIT License)\\n\
-Copyright 2016 Thibault Charbonnier\"");
-asm(".include \"libc/disclaimer.inc\"");
+__notice(largon2_notice, "\
+largon2 (MIT License)\n\
+Copyright 2016 Thibault Charbonnier");
 
 // clang-format off
 /***
@@ -52,7 +51,7 @@ and later.
 Note: this document is also valid for the
 [lua-argon2-ffi](https://github.com/thibaultcha/lua-argon2-ffi) module: an FFI
 implementation of this binding for LuaJIT which uses the same API as this
-original implementaiton.
+original implementation.
 
 @module argon2
 @author Thibault Charbonnier
@@ -76,7 +75,7 @@ for a description of those variants.
 /***
 Argon2 hashing options. Those options can be given to `hash_encoded` as a table.
 If values are omitted, the default values of this module will be used.
-Default values of this module can be overriden with `m_cost()`, `t_cost()`,
+Default values of this module can be overridden with `m_cost()`, `t_cost()`,
 `parallelism()`, `hash_len()`, and `variant()`.
 @field t_cost Number of iterations (`number`, default: `3`).
     argon2.hash_encoded("password", "salt", { t_cost = 4 })

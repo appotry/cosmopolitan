@@ -1,4 +1,3 @@
-/* clang-format off */
 /***************************************************************************//**
  * @file
  * HTML TidyLib command line driver.
@@ -23,8 +22,10 @@
 #include "third_party/tidy/tidy.h"
 #include "third_party/tidy/tidybuffio.h"
 #include "libc/assert.h"
-#include "libc/fmt/fmt.h"
-#include "libc/alg/alg.h"
+#include "libc/mem/alg.h"
+#include "libc/str/str.h"
+#include "libc/runtime/runtime.h"
+#include "libc/mem/mem.h"
 #include "third_party/tidy/sprtf.h"
 
 #if defined(_WIN32)
@@ -1201,7 +1202,10 @@ static tmbstr cleanup_description( ctmbstr description )
                             name = realloc(name, l_name);
                         }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
                         strncpy(name + i_name, &c, 1);
+#pragma GCC diagnostic pop
                         i_name++;
                         i++;
                         break;

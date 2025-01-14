@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2021 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -19,14 +19,15 @@
 #include "libc/calls/calls.h"
 #include "libc/calls/syscall-sysv.internal.h"
 #include "libc/dce.h"
-#include "libc/macros.internal.h"
+#include "libc/errno.h"
+#include "libc/macros.h"
 #include "libc/runtime/runtime.h"
 #include "libc/str/str.h"
 #include "libc/sysv/consts/at.h"
 #include "libc/sysv/errfuns.h"
 
 /**
- * Returns path of executable interperter.
+ * Returns path of executable interpreter.
  *
  * Unlike `program_executable_name` which is designed to figure out the
  * absolute path of the first argument passed to `execve()`, what we do
@@ -44,10 +45,8 @@
  */
 char *GetInterpreterExecutableName(char *p, size_t n) {
   int e;
-  size_t m;
   int cmd[4];
   ssize_t rc;
-  char *r, *t;
   e = errno;
   if (n < 2) {
     errno = ENAMETOOLONG;
@@ -69,6 +68,7 @@ char *GetInterpreterExecutableName(char *p, size_t n) {
     p[rc] = 0;
     return p;
   } else if (IsFreebsd() || IsNetbsd()) {
+    // clang-format off
     cmd[0] = 1;         // CTL_KERN
     cmd[1] = 14;        // KERN_PROC
     if (IsFreebsd()) {  //
@@ -77,6 +77,7 @@ char *GetInterpreterExecutableName(char *p, size_t n) {
       cmd[2] = 5;       // KERN_PROC_PATHNAME
     }                   //
     cmd[3] = -1;        // current process
+    // clang-format on
     if (sysctl(cmd, ARRAYLEN(cmd), p, &n, 0, 0) != -1) {
       errno = e;
       return p;

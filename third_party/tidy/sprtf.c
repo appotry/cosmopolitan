@@ -1,4 +1,3 @@
-/* clang-format off */
 /* sprtf.c
  * SPRTF - Log output utility - part of the HTML Tidy project
  *
@@ -172,7 +171,7 @@ void   set_log_file( char * nf, int open )
 }
 
 #ifdef _MSC_VER
-int gettimeofday(struct timeval *tp, void *tzp)
+int _gettimeofday(struct timeval *tp, void *tzp)
 {
 #ifdef WIN32
     struct _timeb timebuffer;

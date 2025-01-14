@@ -1,4 +1,3 @@
-/* clang-format off */
 
 /*-------------------------------------------------------------*/
 /*--- Library top-level functions.                          ---*/
@@ -30,6 +29,7 @@
 */
 
 #include "libc/calls/calls.h"
+#include "libc/mem/mem.h"
 #include "third_party/bzip2/bzlib_private.inc"
 
 

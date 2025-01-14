@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2022 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -16,12 +16,15 @@
 │ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR             │
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
-#include "libc/intrin/kprintf.h"
-#include "libc/macros.internal.h"
+#include "libc/macros.h"
 #include "libc/sock/internal.h"
+#include "libc/sock/struct/sockaddr.internal.h"
+#include "libc/sock/struct/sockaddr6-bsd.internal.h"
 #include "libc/str/str.h"
 #include "libc/sysv/consts/af.h"
 #include "libc/sysv/errfuns.h"
+
+// TODO(jart): DELETE
 
 /**
  * Converts sockaddr_bsd (XNU/BSD) → sockaddr (Linux/Windows).
@@ -42,6 +45,16 @@ void sockaddr2linux(const union sockaddr_storage_bsd *addr, uint32_t addrsize,
           out_addr->sin.sin_addr = addr->sin.sin_addr;
           *inout_addrsize = sizeof(struct sockaddr_in);
         }
+      } else if (addr->sa.sa_family == AF_INET6) {
+        if (addrsize >= sizeof(struct sockaddr_in6_bsd) &&
+            size >= sizeof(struct sockaddr_in6)) {
+          out_addr->sin6.sin6_family = AF_INET6;
+          out_addr->sin6.sin6_port = addr->sin6.sin6_port;
+          out_addr->sin6.sin6_addr = addr->sin6.sin6_addr;
+          out_addr->sin6.sin6_flowinfo = addr->sin6.sin6_flowinfo;
+          out_addr->sin6.sin6_scope_id = addr->sin6.sin6_scope_id;
+          *inout_addrsize = sizeof(struct sockaddr_in6);
+        }
       } else if (addr->sa.sa_family == AF_UNIX) {
         if (addrsize >=
                 sizeof(addr->sun.sun_len) + sizeof(addr->sun.sun_family) &&
@@ -51,7 +64,8 @@ void sockaddr2linux(const union sockaddr_storage_bsd *addr, uint32_t addrsize,
                                         sizeof(addr->sun.sun_family)),
                             size - sizeof(out_addr->sun.sun_family)));
           out_addr->sun.sun_family = AF_UNIX;
-          if (len) memcpy(out_addr->sun.sun_path, addr->sun.sun_path, len);
+          if (len)
+            memcpy(out_addr->sun.sun_path, addr->sun.sun_path, len);
           *inout_addrsize = sizeof(out_addr->sun.sun_family) + len + 1;
         }
       }

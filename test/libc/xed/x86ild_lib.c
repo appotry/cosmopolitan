@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2020 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -17,15 +17,15 @@
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #include "libc/fmt/bing.internal.h"
-#include "libc/macros.internal.h"
-#include "libc/runtime/gc.internal.h"
+#include "libc/macros.h"
+#include "libc/mem/gc.h"
 #include "libc/str/str.h"
 #include "libc/testlib/testlib.h"
 #include "libc/x/x.h"
 #include "test/libc/xed/lib.h"
 #include "third_party/xed/x86.h"
 
-testonly dontdiscard uint8_t *unbingx86op(const char16_t *codez) {
+__wur uint8_t *unbingx86op(const char16_t *codez) {
   size_t len;
   len = strlen16(codez);
   return unbingbuf(xmalloc(ROUNDUP(len, 16)), len, codez, 0x90);
@@ -34,7 +34,7 @@ testonly dontdiscard uint8_t *unbingx86op(const char16_t *codez) {
 /**
  * Long mode instruction length decoder.
  */
-testonly int ild(const char16_t *codez) {
+int ild(const char16_t *codez) {
   int error;
   struct XedDecodedInst xedd;
   error = xed_instruction_length_decode(
@@ -46,7 +46,7 @@ testonly int ild(const char16_t *codez) {
 /**
  * Real mode instruction length decoder.
  */
-testonly int ildreal(const char16_t *codez) {
+int ildreal(const char16_t *codez) {
   int error;
   struct XedDecodedInst xedd;
   error = xed_instruction_length_decode(
@@ -58,7 +58,7 @@ testonly int ildreal(const char16_t *codez) {
 /**
  * Legacy mode instruction length decoder.
  */
-testonly int ildlegacy(const char16_t *codez) {
+int ildlegacy(const char16_t *codez) {
   int error;
   struct XedDecodedInst xedd;
   error = xed_instruction_length_decode(

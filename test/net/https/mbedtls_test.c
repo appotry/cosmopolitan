@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2021 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -16,21 +16,21 @@
 │ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR             │
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
-#include "libc/bits/bits.h"
-#include "libc/bits/bswap.h"
-#include "libc/macros.internal.h"
+#include "libc/intrin/bswap.h"
+#include "libc/macros.h"
+#include "libc/mem/gc.h"
 #include "libc/nexgen32e/crc32.h"
 #include "libc/nexgen32e/nexgen32e.h"
 #include "libc/nexgen32e/x86feature.h"
 #include "libc/nt/typedef/imagetlscallback.h"
-#include "libc/rand/rand.h"
-#include "libc/runtime/gc.internal.h"
 #include "libc/runtime/runtime.h"
+#include "libc/stdio/rand.h"
 #include "libc/str/blake2.h"
+#include "libc/str/highwayhash64.h"
 #include "libc/testlib/ezbench.h"
 #include "libc/testlib/hyperion.h"
 #include "libc/testlib/testlib.h"
-#include "libc/x/x.h"
+#include "libc/x/xasprintf.h"
 #include "third_party/mbedtls/aes.h"
 #include "third_party/mbedtls/base64.h"
 #include "third_party/mbedtls/bignum.h"
@@ -59,18 +59,18 @@
 #include "third_party/mbedtls/sha256.h"
 #include "third_party/mbedtls/sha512.h"
 #include "third_party/mbedtls/x509.h"
-#include "third_party/quickjs/libbf.h"
+#include "third_party/zlib/zlib.h"
 
 uint64_t rng[12];
 mbedtls_ecp_group grp;
 
 int GetEntropy(void *c, unsigned char *p, size_t n) {
-  rngset(p, n, rand64, -1);
+  rngset(p, n, _rand64, -1);
   return 0;
 }
 
 void SetUp(void) {
-  rngset(rng, sizeof(rng), rand64, -1);
+  rngset(rng, sizeof(rng), _rand64, -1);
 }
 
 #ifdef MBEDTLS_SELF_TEST
@@ -169,7 +169,7 @@ BENCH(p256, bench) {
   mbedtls_ecp_group_init(&grp);
   mbedtls_ecp_group_load(&grp, MBEDTLS_ECP_DP_SECP256R1);
   mbedtls_mpi x = {1, 8, gc(calloc(8, 8))};
-  rngset(x.p, 8 * 8, rand64, -1);
+  rngset(x.p, 8 * 8, _rand64, -1);
   EZBENCH2("P-256 modulus MbedTLS MPI lib", donothing, P256_MPI(&x));
   EZBENCH2("P-256 modulus Justine rewrite", donothing, P256_JUSTINE(&x));
   mbedtls_ecp_group_free(&grp);
@@ -180,7 +180,6 @@ BENCH(p384, bench) {
 #ifdef MBEDTLS_ECP_C
   mbedtls_ecp_group_init(&grp);
   mbedtls_ecp_group_load(&grp, MBEDTLS_ECP_DP_SECP384R1);
-  uint64_t y[12];
   mbedtls_mpi x = {1, 12, gc(calloc(12, 8))};
   EZBENCH2("P-384 modulus MbedTLS MPI lib", donothing, P384_MPI(&x));
   EZBENCH2("P-384 modulus Justine rewrite", donothing, P384_JUSTINE(&x));
@@ -222,7 +221,7 @@ TEST(sha1, test) {
 }
 
 TEST(sha224, test) {
-  uint8_t d[28];
+  uint8_t d[50];
   uint8_t want[28] = {0x23, 0x09, 0x7D, 0x22, 0x34, 0x05, 0xD8,
                       0x22, 0x86, 0x42, 0xA4, 0x77, 0xBD, 0xA2,
                       0x55, 0xB3, 0x2A, 0xAD, 0xBC, 0xE4, 0xBD,
@@ -242,7 +241,7 @@ TEST(sha256, test) {
 }
 
 TEST(sha384, test) {
-  uint8_t d[48];
+  uint8_t d[70];
   uint8_t want[48] = {
       0xCB, 0x00, 0x75, 0x3F, 0x45, 0xA3, 0x5E, 0x8B, 0xB5, 0xA0, 0x3D, 0x69,
       0x9A, 0xC6, 0x50, 0x07, 0x27, 0x2C, 0x32, 0xAB, 0x0E, 0xDE, 0xD1, 0x63,
@@ -265,6 +264,13 @@ TEST(sha512, test) {
   EXPECT_EQ(0, memcmp(want, d, 64));
 }
 
+static const uint64_t kTestKey1[4] = {
+    0x0706050403020100,
+    0x0F0E0D0C0B0A0908,
+    0x1716151413121110,
+    0x1F1E1D1C1B1A1918,
+};
+
 BENCH(mbedtls, bench) {
   uint8_t d[64];
   EZBENCH_N("md5", kHyperionSize, mbedtls_md5_ret(kHyperion, kHyperionSize, d));
@@ -279,6 +285,8 @@ BENCH(mbedtls, bench) {
   EZBENCH_N("blake2b256", kHyperionSize,
             BLAKE2B256(kHyperion, kHyperionSize, d));
   EZBENCH_N("crc32_z", kHyperionSize, crc32_z(0, kHyperion, kHyperionSize));
+  EZBENCH_N("highwayhash64", kHyperionSize,
+            HighwayHash64(kHyperion, kHyperionSize, kTestKey1));
 }
 
 char *mpi2str(mbedtls_mpi *m) {
@@ -289,7 +297,6 @@ char *mpi2str(mbedtls_mpi *m) {
 }
 
 mbedtls_mpi *str2mpi(const char *s) {
-  size_t n;
   mbedtls_mpi *m;
   m = calloc(1, sizeof(mbedtls_mpi));
   ASSERT_EQ(0, mbedtls_mpi_read_string(m, 10, s));
@@ -304,7 +311,6 @@ char *mpi2str16(mbedtls_mpi *m) {
 }
 
 mbedtls_mpi *str2mpi16(const char *s) {
-  size_t n;
   mbedtls_mpi *m;
   m = calloc(1, sizeof(mbedtls_mpi));
   ASSERT_EQ(0, mbedtls_mpi_read_string(m, 16, s));
@@ -607,9 +613,6 @@ TEST(mpi_shift_r, funbye) {
 }
 
 TEST(mpi_shift_l, fun1) {
-  mbedtls_mpi w = {1, 9,
-                   (uint64_t[]){0, 0, 2 << 1, 4 << 1, 8 << 1, 16 << 1, 32 << 1,
-                                64 << 1, 128 << 1}};
   mbedtls_mpi x = {1, 9, (uint64_t[]){2, 4, 8, 16, 32, 64, 128, 0, 0}};
   EXPECT_EQ(0, mbedtls_mpi_shift_l(&x, 129));
   EXPECT_EQ(9, x.n);
@@ -625,8 +628,6 @@ TEST(mpi_shift_l, fun1) {
 }
 
 TEST(mpi_shift_l, fun2) {
-  mbedtls_mpi o = {1, 3, (uint64_t[9]){0x8000000000000000, 0, 0}};
-  mbedtls_mpi w = {1, 3, (uint64_t[9]){0, 1, 0}};
   mbedtls_mpi x = {1, 3,
                    (uint64_t[9]){
                        0x8000000000000003,
@@ -701,10 +702,11 @@ BENCH(inv_mod, bench3) {
 }
 
 TEST(ShiftRightAvx, test1) {
-  if (!X86_HAVE(AVX)) return;
+  if (!X86_HAVE(AVX))
+    return;
   int i;
   for (i = 0; i < 10; ++i) {
-    uint64_t mem[1] = {rand64()};
+    uint64_t mem[1] = {_rand64()};
     uint64_t want[1];
     uint64_t got[1];
     memcpy(want, mem, sizeof(mem));
@@ -716,10 +718,11 @@ TEST(ShiftRightAvx, test1) {
 }
 
 TEST(ShiftRightAvx, test2) {
-  if (!X86_HAVE(AVX)) return;
+  if (!X86_HAVE(AVX))
+    return;
   int i;
   for (i = 0; i < 10; ++i) {
-    uint64_t mem[2] = {rand64(), rand64()};
+    uint64_t mem[2] = {_rand64(), _rand64()};
     uint64_t want[2];
     uint64_t got[2];
     memcpy(want, mem, sizeof(mem));
@@ -732,10 +735,11 @@ TEST(ShiftRightAvx, test2) {
 }
 
 TEST(ShiftRightAvx, test3) {
-  if (!X86_HAVE(AVX)) return;
+  if (!X86_HAVE(AVX))
+    return;
   int i;
   for (i = 0; i < 10; ++i) {
-    uint64_t mem[3] = {rand64(), rand64(), rand64()};
+    uint64_t mem[3] = {_rand64(), _rand64(), _rand64()};
     uint64_t want[3];
     uint64_t got[3];
     memcpy(want, mem, sizeof(mem));
@@ -749,10 +753,11 @@ TEST(ShiftRightAvx, test3) {
 }
 
 TEST(ShiftRightAvx, test4) {
-  if (!X86_HAVE(AVX)) return;
+  if (!X86_HAVE(AVX))
+    return;
   int i;
   for (i = 0; i < 10; ++i) {
-    uint64_t mem[4] = {rand64(), rand64(), rand64(), rand64()};
+    uint64_t mem[4] = {_rand64(), _rand64(), _rand64(), _rand64()};
     uint64_t want[4];
     uint64_t got[4];
     memcpy(want, mem, sizeof(mem));
@@ -767,11 +772,12 @@ TEST(ShiftRightAvx, test4) {
 }
 
 TEST(ShiftRightAvx, test8) {
-  if (!X86_HAVE(AVX)) return;
+  if (!X86_HAVE(AVX))
+    return;
   int i;
   for (i = 0; i < 10; ++i) {
-    uint64_t mem[8] = {rand64(), rand64(), rand64(), rand64(),
-                       rand64(), rand64(), rand64(), rand64()};
+    uint64_t mem[8] = {_rand64(), _rand64(), _rand64(), _rand64(),
+                       _rand64(), _rand64(), _rand64(), _rand64()};
     uint64_t want[8];
     uint64_t got[8];
     memcpy(want, mem, sizeof(mem));
@@ -790,11 +796,12 @@ TEST(ShiftRightAvx, test8) {
 }
 
 TEST(ShiftRightAvx, test9) {
-  if (!X86_HAVE(AVX)) return;
+  if (!X86_HAVE(AVX))
+    return;
   int i;
   for (i = 0; i < 10; ++i) {
-    uint64_t mem[9] = {rand64(), rand64(), rand64(), rand64(), rand64(),
-                       rand64(), rand64(), rand64(), rand64()};
+    uint64_t mem[9] = {_rand64(), _rand64(), _rand64(), _rand64(), _rand64(),
+                       _rand64(), _rand64(), _rand64(), _rand64()};
     uint64_t want[9];
     uint64_t got[9];
     memcpy(want, mem, sizeof(mem));
@@ -809,9 +816,10 @@ TEST(ShiftRightAvx, test9) {
 }
 
 BENCH(ShiftRight, bench) {
-  if (!X86_HAVE(AVX)) return;
+  if (!X86_HAVE(AVX))
+    return;
   uint64_t x[64];
-  rngset(x, sizeof(x), rand64, -1);
+  rngset(x, sizeof(x), _rand64, -1);
   EZBENCH2("ShiftRight", donothing, ShiftRight(x, 64, 1));
   EZBENCH2("ShiftRightAvx", donothing, ShiftRightAvx(x, 64, 1));
   EZBENCH2("ShiftRightPure", donothing, ShiftRightPure(x, 64, 1));
@@ -819,7 +827,7 @@ BENCH(ShiftRight, bench) {
 
 BENCH(Zeroize, bench) {
   uint64_t x[64];
-  rngset(x, sizeof(x), rand64, -1);
+  rngset(x, sizeof(x), _rand64, -1);
   EZBENCH2("memset (64)", donothing, memset(x, 0, sizeof(x)));
   EZBENCH2("Zeroize (64)", donothing, mbedtls_platform_zeroize(x, 64));
 }
@@ -892,9 +900,10 @@ TEST(endian, big4) {
 }
 
 TEST(Mul4x4, test) {
-  int i, j, N, M;
+  int N, M;
   mbedtls_mpi A, B, C, D;
-  if (!X86_HAVE(BMI2) || !X86_HAVE(ADX)) return;
+  if (!X86_HAVE(BMI2) || !X86_HAVE(ADX))
+    return;
   N = 4;
   M = 4;
   mbedtls_mpi_init(&A);
@@ -915,9 +924,10 @@ TEST(Mul4x4, test) {
 }
 
 BENCH(Mul4x4, bench) {
-  int i, j, N, M;
+  int i, N, M;
   mbedtls_mpi A, B, C, D, E;
-  if (!X86_HAVE(BMI2) || !X86_HAVE(ADX)) return;
+  if (!X86_HAVE(BMI2) || !X86_HAVE(ADX))
+    return;
   N = 4;
   M = 4;
   mbedtls_mpi_init(&A);
@@ -970,9 +980,10 @@ BENCH(Mul4x4, bench) {
 }
 
 BENCH(Mul6x6, bench) {
-  int i, j, N, M;
+  int i, N, M;
   mbedtls_mpi A, B, C, D;
-  if (!X86_HAVE(BMI2) || !X86_HAVE(ADX)) return;
+  if (!X86_HAVE(BMI2) || !X86_HAVE(ADX))
+    return;
   N = 6;
   M = 6;
   mbedtls_mpi_init(&A);
@@ -1007,9 +1018,10 @@ BENCH(Mul6x6, bench) {
 }
 
 BENCH(Mul10x10, bench) {
-  int i, j, N, M;
-  mbedtls_mpi A, B, C, D;
-  if (!X86_HAVE(BMI2) || !X86_HAVE(ADX)) return;
+  int N, M;
+  mbedtls_mpi A, B, C;
+  if (!X86_HAVE(BMI2) || !X86_HAVE(ADX))
+    return;
   N = 10;
   M = 10;
   mbedtls_mpi_init(&A);
@@ -1026,9 +1038,10 @@ BENCH(Mul10x10, bench) {
 }
 
 BENCH(Mul16x16, bench) {
-  int i, j, N, M;
-  mbedtls_mpi A, B, C, D;
-  if (!X86_HAVE(BMI2) || !X86_HAVE(ADX)) return;
+  int N, M;
+  mbedtls_mpi A, B, C;
+  if (!X86_HAVE(BMI2) || !X86_HAVE(ADX))
+    return;
   N = 16;
   M = 16;
   mbedtls_mpi_init(&A);
@@ -1045,9 +1058,10 @@ BENCH(Mul16x16, bench) {
 }
 
 BENCH(Mul32x32, bench) {
-  int i, j, N, M;
+  int i, N, M;
   mbedtls_mpi A, B, C, D, K;
-  if (!X86_HAVE(BMI2) || !X86_HAVE(ADX)) return;
+  if (!X86_HAVE(BMI2) || !X86_HAVE(ADX))
+    return;
   N = 32;
   M = 32;
   mbedtls_mpi_init(&A);
@@ -1086,9 +1100,10 @@ BENCH(Mul32x32, bench) {
 }
 
 BENCH(Mul16x1, bench) {
-  int i, j, N, M;
-  mbedtls_mpi A, B, C, D;
-  if (!X86_HAVE(BMI2) || !X86_HAVE(ADX)) return;
+  int N, M;
+  mbedtls_mpi A, B, C;
+  if (!X86_HAVE(BMI2) || !X86_HAVE(ADX))
+    return;
   N = 16;
   M = 1;
   mbedtls_mpi_init(&A);
@@ -1105,9 +1120,10 @@ BENCH(Mul16x1, bench) {
 }
 
 BENCH(Mul32x1, bench) {
-  int i, j, N, M;
-  mbedtls_mpi A, B, C, D;
-  if (!X86_HAVE(BMI2) || !X86_HAVE(ADX)) return;
+  int N, M;
+  mbedtls_mpi A, B, C;
+  if (!X86_HAVE(BMI2) || !X86_HAVE(ADX))
+    return;
   N = 32;
   M = 1;
   mbedtls_mpi_init(&A);

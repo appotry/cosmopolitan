@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2021 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -17,8 +17,8 @@
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #include "libc/calls/mount.h"
-
-int sys_unmount(const char *, int);
+#include "libc/calls/syscall-sysv.internal.h"
+#include "libc/intrin/strace.h"
 
 /**
  * Unmounts file system.
@@ -30,12 +30,15 @@ int sys_unmount(const char *, int);
  * The following flags may also be used, but could be set to zero at
  * runtime if the underlying kernel doesn't support them.
  *
- * - `MNT_DETACH`
+ * - `MNT_DETACH`: lazily unmount; Linux-only
  * - `MNT_EXPIRE`
  * - `UMOUNT_NOFOLLOW`
  * - `MNT_BYFSID`
  *
  */
 int unmount(const char *target, int flags) {
-  return sys_unmount(target, flags);
+  int rc;
+  rc = sys_unmount(target, flags);
+  STRACE("unmount(%#s, %#x) → %d% m", target, flags, rc);
+  return rc;
 }

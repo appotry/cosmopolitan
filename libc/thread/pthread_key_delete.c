@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2022 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -17,18 +17,26 @@
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #include "libc/errno.h"
-#include "libc/thread/internal.h"
+#include "libc/intrin/atomic.h"
+#include "libc/thread/posixthread.internal.h"
 #include "libc/thread/thread.h"
 
 /**
  * Deletes TLS slot.
+ *
+ * This function should only be called if all threads have finished
+ * using the key registration. If a key is used after being deleted
+ * then the behavior is undefined. If `k` was not registered by the
+ * pthread_key_create() function then the behavior is undefined.
+ *
+ * @param key was created by pthread_key_create()
+ * @return 0 on success, or errno on error
+ * @raise EINVAL if `key` is invalid
  */
-int pthread_key_delete(pthread_key_t key) {
-  if (key < PTHREAD_KEYS_MAX) {
-    _pthread_key_usage[key / 64] &= ~(1ul << (key % 64));
-    _pthread_key_dtor[key] = 0;
-    return 0;
-  } else {
-    return EINVAL;
-  }
+int pthread_key_delete(pthread_key_t k) {
+  if (!(0 <= k && k < PTHREAD_KEYS_MAX))
+    return EINVAL;  // corrupt key identifier
+  if (!atomic_exchange_explicit(&_pthread_key_dtor[k], 0, memory_order_acq_rel))
+    return EINVAL;  // delete called twice
+  return 0;
 }

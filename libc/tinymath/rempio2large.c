@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:t;c-basic-offset:8;tab-width:8;coding:utf-8   -*-│
-│vi: set et ft=c ts=8 tw=8 fenc=utf-8                                       :vi│
+│ vi: set noet ft=c ts=8 sw=8 fenc=utf-8                                   :vi │
 ╚──────────────────────────────────────────────────────────────────────────────╝
 │                                                                              │
 │  Musl Libc                                                                   │
@@ -27,16 +27,12 @@
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #include "libc/math.h"
 #include "libc/tinymath/kernel.internal.h"
+__static_yoink("musl_libc_notice");
+__static_yoink("fdlibm_notice");
 
-asm(".ident\t\"\\n\\n\
-fdlibm (fdlibm license)\\n\
-Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.\"");
-asm(".ident\t\"\\n\\n\
-Musl libc (MIT License)\\n\
-Copyright 2005-2014 Rich Felker, et. al.\"");
-asm(".include \"libc/disclaimer.inc\"");
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 
-/* clang-format off */
+
 /* origin: FreeBSD /usr/src/lib/msun/src/k_rem_pio2.c */
 /*
  * ====================================================
@@ -79,14 +75,14 @@ asm(".include \"libc/disclaimer.inc\"");
  *                      z    = (z-x[i])*2**24
  *
  *
- *      y[]     ouput result in an array of double precision numbers.
+ *      y[]     output result in an array of double precision numbers.
  *              The dimension of y[] is:
  *                      24-bit  precision       1
  *                      53-bit  precision       2
  *                      64-bit  precision       2
  *                      113-bit precision       3
  *              The actual value is the sum of them. Thus for 113-bit
- *              precison, one may have to do something like:
+ *              precision, one may have to do something like:
  *
  *              long double t,w,r_head, r_tail;
  *              t = (long double)y[2] + (long double)y[1];
@@ -117,7 +113,7 @@ asm(".include \"libc/disclaimer.inc\"");
  *              jk+1 must be 2 larger than you might expect so that our
  *              recomputation test works. (Up to 24 bits in the integer
  *              part (the 24 bits of it that we compute) and 23 bits in
- *              the fraction part may be lost to cancelation before we
+ *              the fraction part may be lost to cancellation before we
  *              recompute.)
  *
  *      jz      local integer variable indicating the number of

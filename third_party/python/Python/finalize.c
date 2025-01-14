@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:4;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=4 sts=4 sw=4 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=4 sts=4 sw=4 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Python 3                                                                     │
 │ https://docs.python.org/3/license.html                                       │
@@ -17,7 +17,6 @@
 #include "third_party/python/Include/pystate.h"
 #include "third_party/python/Include/yoink.h"
 #include "third_party/python/pyconfig.h"
-/* clang-format off */
 
 /* Undo the effect of Py_Initialize().
 
@@ -31,6 +30,12 @@
 
    Locking: as above.
 */
+
+#ifdef WITH_THREAD
+extern void wait_for_thread_shutdown(void);
+extern void _PyGILState_Init(PyInterpreterState *, PyThreadState *);
+extern void _PyGILState_Fini(void);
+#endif /* WITH_THREAD */
 
 int
 Py_FinalizeEx(void)
@@ -96,6 +101,7 @@ Py_FinalizeEx(void)
 #endif
     /* Destroy all modules */
     PyImport_Cleanup();
+    _PyImportLookupTables_Cleanup();
 
     /* Flush sys.stdout and sys.stderr (again, in case more was printed) */
     if (_Py_FlushStdFiles() < 0) {

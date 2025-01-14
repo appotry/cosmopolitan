@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2021 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -22,6 +22,9 @@
 /**
  * Computes 32-bit Castagnoli Cyclic Redundancy Check.
  *
+ *     x^32+x^26+x^23+x^22+x^16+x^12+x^11+x^10+x^8+x^7+x^5+x^4+x^2+x+1
+ *     0b00011110110111000110111101000001
+ *
  * @param init is the initial hash value
  * @param data points to the data
  * @param size is the byte size of data
@@ -30,7 +33,13 @@
  */
 uint32_t crc32c(uint32_t init, const void *data, size_t size) {
   uint64_t h;
+  static bool once;
   const unsigned char *p, *pe;
+  static uint32_t kCrc32cTab[256];
+  if (!once) {
+    crc32init(kCrc32cTab, 0x82f63b78);
+    once = 1;
+  }
   p = data;
   pe = p + size;
   h = init ^ 0xffffffff;

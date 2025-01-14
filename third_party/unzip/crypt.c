@@ -1,4 +1,3 @@
-// clang-format off
 /*
   Copyright (c) 1990-2007 Info-ZIP.  All rights reserved.
 
@@ -34,6 +33,7 @@
 #include "third_party/unzip/zip.h"
 #include "third_party/unzip/crypt.h"
 #include "third_party/unzip/ttyio.h"
+#include "third_party/unzip/globals.h"
 
 #if CRYPT
 

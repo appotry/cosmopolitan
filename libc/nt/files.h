@@ -44,7 +44,6 @@
 #define kNtDuplicateCloseSource 1
 #define kNtDuplicateSameAccess  2
 
-#if !(__ASSEMBLER__ + __LINKER__ + 0)
 COSMOPOLITAN_C_START_
 
 intptr_t LoadResource(int64_t hModule, int64_t hResInfo);
@@ -64,13 +63,14 @@ bool32 CopyFile(const char16_t *lpExistingFileName,
 bool32 MoveFile(const char16_t *lpExistingFileName,
                 const char16_t *lpNewFileName) paramsnonnull();
 bool32 MoveFileEx(const char16_t *lpExistingFileName,
-                  const char16_t *lpNewFileName, int dwFlags) paramsnonnull();
+                  const char16_t *opt_lpNewFileName, int dwFlags)
+    paramsnonnull((1));
 
 bool32 SetCurrentDirectory(const char16_t *lpPathName);
 uint32_t GetCurrentDirectory(uint32_t nBufferLength, char16_t *out_lpBuffer);
 
 bool32 CreateDirectory(const char16_t *lpPathName,
-                       struct NtSecurityAttributes *lpSecurityAttributes);
+                       const struct NtSecurityAttributes *lpSecurityAttributes);
 bool32 RemoveDirectory(const char16_t *lpPathName);
 
 bool32 DuplicateHandle(int64_t hSourceProcessHandle, int64_t hSourceHandle,
@@ -89,6 +89,9 @@ bool32 GetFileInformationByHandleEx(int64_t hFile,
 
 bool32 GetFileInformationByHandle(
     int64_t hFile, struct NtByHandleFileInformation *lpFileInformation);
+bool32 SetFileInformationByHandle(int64_t hFile, int FileInformationClass,
+                                  const void *lpFileInformation,
+                                  uint32_t dwBufferSize);
 
 uint32_t GetFileAttributes(const char16_t *lpFileName);
 bool32 GetFileAttributesEx(
@@ -116,13 +119,13 @@ bool32 DeviceIoControl(int64_t hDevice, uint32_t dwIoControlCode,
 bool32 LockFile(int64_t hFile, uint32_t dwFileOffsetLow,
                 uint32_t dwFileOffsetHigh, uint32_t nNumberOfBytesToLockLow,
                 uint32_t nNumberOfBytesToLockHigh);
+bool32 UnlockFile(int64_t hFile, uint32_t dwFileOffsetLow,
+                  uint32_t dwFileOffsetHigh, uint32_t nNumberOfBytesToUnlockLow,
+                  uint32_t nNumberOfBytesToUnlockHigh);
 bool32 LockFileEx(int64_t hFile, uint32_t dwFlags, uint32_t dwReserved,
                   uint32_t nNumberOfBytesToLockLow,
                   uint32_t nNumberOfBytesToLockHigh,
                   struct NtOverlapped *lpOverlapped) paramsnonnull();
-bool32 UnlockFile(int64_t hFile, uint32_t dwFileOffsetLow,
-                  uint32_t dwFileOffsetHigh, uint32_t nNumberOfBytesToUnlockLow,
-                  uint32_t nNumberOfBytesToUnlockHigh);
 bool32 UnlockFileEx(int64_t hFile, uint32_t dwReserved,
                     uint32_t nNumberOfBytesToUnlockLow,
                     uint32_t nNumberOfBytesToUnlockHigh,
@@ -130,17 +133,11 @@ bool32 UnlockFileEx(int64_t hFile, uint32_t dwReserved,
 
 bool32 CreateHardLink(const char16_t *lpFileName,
                       const char16_t *lpExistingFileName,
-                      struct NtSecurityAttributes *reserved)
+                      const struct NtSecurityAttributes *reserved)
     paramsnonnull((1, 2));
 bool32 CreateSymbolicLink(const char16_t *lpSymlinkFileName,
                           const char16_t *lpTargetPathName, uint32_t dwFlags)
     paramsnonnull();
-
-uint32_t SetFilePointer(int64_t hFile, int32_t lDistanceToMove,
-                        int32_t *optional_lpDistanceToMoveHigh,
-                        int dwMoveMethod);
-bool32 SetFilePointerEx(int64_t hFile, int64_t liDistanceToMove,
-                        int64_t *optional_lpNewFilePointer, int dwMoveMethod);
 
 bool32 SetEndOfFile(int64_t hFile);
 bool32 SetFileValidData(int64_t hFile, int64_t ValidDataLength);
@@ -155,7 +152,7 @@ bool32 OpenProcessToken(int64_t hProcessHandle, uint32_t dwDesiredAccess,
 bool32 DuplicateToken(int64_t hExistingTokenHandle, int dwImpersonationLevel,
                       int64_t *out_hDuplicateTokenHandle);
 bool32 DuplicateTokenEx(int64_t hExistingToken, unsigned int dwDesiredAccess,
-                        struct NtSecurityAttributes *lpTokenAttributes,
+                        const struct NtSecurityAttributes *lpTokenAttributes,
                         int ImpersonationLevel, int TokenType,
                         int64_t *out_phNewToken);
 
@@ -219,9 +216,21 @@ bool32 GetVolumePathName(const char16_t *lpszFileName,
                          char16_t *lpszVolumePathName,
                          uint32_t cchBufferLength);
 
+bool32 GetVolumeInformationByHandle(int64_t hFile,
+                                    char16_t *opt_out_lpVolumeNameBuffer,
+                                    uint32_t nVolumeNameSize,
+                                    uint32_t *opt_out_lpVolumeSerialNumber,
+                                    uint32_t *opt_out_lpMaximumComponentLength,
+                                    uint32_t *opt_out_lpFileSystemFlags,
+                                    char16_t *opt_out_lpFileSystemNameBuffer,
+                                    uint32_t nFileSystemNameSize);
+
+uint32_t SetFilePointer(intptr_t hFile, int32_t lDistanceToMove,
+                        long *opt_inout_lpDistanceToMoveHigh,
+                        uint32_t dwMoveMethod);
+
 #if ShouldUseMsabiAttribute()
 #include "libc/nt/thunk/files.inc"
 #endif /* ShouldUseMsabiAttribute() */
 COSMOPOLITAN_C_END_
-#endif /* !(__ASSEMBLER__ + __LINKER__ + 0) */
 #endif /* COSMOPOLITAN_LIBC_NT_FILES_H_ */

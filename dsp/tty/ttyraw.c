@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2020 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -22,11 +22,10 @@
 #include "libc/calls/struct/sigaction.h"
 #include "libc/calls/struct/siginfo.h"
 #include "libc/calls/termios.h"
-#include "libc/calls/typedef/sigaction_f.h"
 #include "libc/calls/ucontext.h"
 #include "libc/log/log.h"
-#include "libc/macros.internal.h"
-#include "libc/runtime/gc.internal.h"
+#include "libc/macros.h"
+#include "libc/mem/gc.h"
 #include "libc/runtime/runtime.h"
 #include "libc/str/str.h"
 #include "libc/sysv/consts/fileno.h"
@@ -34,6 +33,7 @@
 #include "libc/sysv/consts/sig.h"
 #include "libc/sysv/errfuns.h"
 #include "libc/x/x.h"
+#include "libc/x/xsigaction.h"
 
 /* TODO(jart): DELETE */
 
@@ -69,13 +69,16 @@ static textstartup int ttyraw_enable(void) {
 }
 
 static textstartup void ttyraw_hidecursor(void) {
-  if (!g_ttyraw.setup) return;
-  if (g_ttyraw.flags & kTtyCursor) return;
+  if (!g_ttyraw.setup)
+    return;
+  if (g_ttyraw.flags & kTtyCursor)
+    return;
   ttyhidecursor(FD);
 }
 
 static textexit int ttyraw_disable(void) {
-  if (!g_ttyraw.setup) return 0;
+  if (!g_ttyraw.setup)
+    return 0;
   ttyshowcursor(FD);
   return ttyrestore(FD, &g_ttyraw.old);
 }
@@ -84,10 +87,11 @@ static textexit void ttyraw_onexit(void) {
   ttyraw_disable();
 }
 
-static relegated void ttyraw_onsig(int sig, struct siginfo *info,
+static relegated void ttyraw_onsig(int sig, siginfo_t *info,
                                    struct ucontext *ctx) {
   size_t i;
-  if (g_ttyraw.noreentry) _Exit(128 + sig);
+  if (g_ttyraw.noreentry)
+    _Exit(128 + sig);
   g_ttyraw.noreentry = true;
   if (g_ttyraw.flags != -1) {
     if (sig == SIGCONT) {
@@ -98,8 +102,8 @@ static relegated void ttyraw_onsig(int sig, struct siginfo *info,
   }
   for (i = 0; i < ARRAYLEN(g_ttyraw.sigs); ++i) {
     if (g_ttyraw.sigs[i] == sig) {
-      if (g_ttyraw.next[i] != SIG_IGN) {
-        if (g_ttyraw.next[i] != SIG_DFL) {
+      if (g_ttyraw.next[i] != (void *)SIG_IGN) {
+        if (g_ttyraw.next[i] != (void *)SIG_DFL) {
           if (g_ttyraw.next[i]) {
             g_ttyraw.next[i](sig, info, ctx);
           }
@@ -118,7 +122,7 @@ static textstartup void ttyraw_initsig(int sig, unsigned flags, unsigned mask) {
   struct sigaction old;
   g_ttyraw.next[i] = xsigaction(sig, ttyraw_onsig, flags, mask, &old) != -1
                          ? old.sa_sigaction
-                         : SIG_DFL;
+                         : (void *)SIG_DFL;
   g_ttyraw.sigs[i++] = sig;
 }
 

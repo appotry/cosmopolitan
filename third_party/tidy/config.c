@@ -1,4 +1,3 @@
-/* clang-format off */
 /* config.c
  * Read configuration files and manage configuration properties.
  *
@@ -16,8 +15,9 @@
 #include "libc/assert.h"
 #include "libc/assert.h"
 #include "libc/calls/calls.h"
-#include "libc/runtime/gc.internal.h"
+#include "libc/mem/gc.h"
 #include "libc/mem/mem.h"
+#include "libc/runtime/runtime.h"
 #include "third_party/tidy/tags.h"
 
 #ifdef WINDOWS_OS

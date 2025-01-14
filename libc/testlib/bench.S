@@ -1,5 +1,5 @@
 /*-*- mode:unix-assembly; indent-tabs-mode:t; tab-width:8; coding:utf-8     -*-│
-│vi: set et ft=asm ts=8 tw=8 fenc=utf-8                                     :vi│
+│ vi: set noet ft=asm ts=8 sw=8 fenc=utf-8                                 :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2020 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -16,26 +16,26 @@
 │ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR             │
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
-#include "libc/macros.internal.h"
+#include "libc/macros.h"
 .yoink	testlib_runallbenchmarks
 
 //	Decentralized section for benchmark registration.
 //
 //	@see	ape/ape.lds
-	.section .piro.relo.sort.bench.1,"aw",@nobits
+	.section .piro.relo.sort.bench.1,"aw",@progbits
 	.type	__bench_start,@object
 	.type	__bench_end,@object
 	.globl	__bench_start,__bench_end
 	.hidden	__bench_start,__bench_end
 	.byte	0
-	.align	__SIZEOF_POINTER__
+	.balign	__SIZEOF_POINTER__
 	.underrun
 __bench_start:
 	.previous/*
 	...
 	decentralized content
 	...
-	*/.section .piro.relo.sort.bench.3,"aw",@nobits
+	*/.section .piro.relo.sort.bench.3,"aw",@progbits
 __bench_end:
 	.quad	0
 	.overrun

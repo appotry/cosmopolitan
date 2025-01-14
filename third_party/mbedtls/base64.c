@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:4;tab-width:4;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright The Mbed TLS Contributors                                          │
 │                                                                              │
@@ -16,15 +16,10 @@
 │ limitations under the License.                                               │
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #include "third_party/mbedtls/base64.h"
+#include "libc/str/str.h"
 #include "third_party/mbedtls/common.h"
 #include "third_party/mbedtls/platform.h"
-
-asm(".ident\t\"\\n\\n\
-Mbed TLS (Apache 2.0)\\n\
-Copyright ARM Limited\\n\
-Copyright Mbed TLS Contributors\"");
-asm(".include \"libc/disclaimer.inc\"");
-/* clang-format off */
+__static_yoink("mbedtls_notice");
 
 #define ENC "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
@@ -126,8 +121,8 @@ static inline unsigned char mbedtls_base64_table_lookup( const unsigned char * c
 int mbedtls_base64_encode( unsigned char *dst, size_t dlen, size_t *olen,
                            const unsigned char *src, size_t slen )
 {
+    size_t n;
     unsigned w;
-    size_t i, n;
     unsigned char *q;
     const unsigned char *p, *pe;
     if( !slen ) {

@@ -1,6 +1,5 @@
-/* clang-format off */
 /* Convert between signal names and numbers.
-Copyright (C) 1990-2020 Free Software Foundation, Inc.
+Copyright (C) 1990-2023 Free Software Foundation, Inc.
 This file is part of GNU Make.
 
 GNU Make is free software; you can redistribute it and/or modify it under the
@@ -13,9 +12,9 @@ WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License along with
-this program.  If not, see <http://www.gnu.org/licenses/>.  */
+this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
-#include "third_party/make/makeint.inc"
+#include "makeint.h"
 
 /* If the system provides strsignal, we don't need it. */
 
@@ -122,10 +121,10 @@ signame_init (void)
   init_sig (SIGKILL, "KILL", _("Killed"));
 #endif
 #if defined (SIGBUS)
-  init_sig (SIGBUS, "BUS", _("Bus error"));
+  // init_sig (SIGBUS, "BUS", _("Bus error"));
 #endif
 #if defined (SIGSEGV)
-  init_sig (SIGSEGV, "SEGV", _("Segmentation fault"));
+  // init_sig (SIGSEGV, "SEGV", _("Segmentation fault"));
 #endif
 #if defined (SIGSYS)
   init_sig (SIGSYS, "SYS", _("Bad system call"));

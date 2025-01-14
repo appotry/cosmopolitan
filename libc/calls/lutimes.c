@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2021 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -16,10 +16,10 @@
 │ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR             │
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
-#include "libc/calls/calls.h"
+#include "libc/calls/struct/timespec.h"
+#include "libc/calls/struct/timeval.h"
 #include "libc/dce.h"
 #include "libc/sysv/consts/at.h"
-#include "libc/time/time.h"
 
 /**
  * Changes file timestamps, the legacy way.
@@ -27,10 +27,8 @@
 int lutimes(const char *filename, const struct timeval tv[2]) {
   struct timespec ts[2];
   if (tv) {
-    ts[0].tv_sec = tv[0].tv_sec;
-    ts[0].tv_nsec = tv[0].tv_usec * 1000;
-    ts[1].tv_sec = tv[1].tv_sec;
-    ts[1].tv_nsec = tv[1].tv_usec * 1000;
+    ts[0] = timeval_totimespec(tv[0]);
+    ts[1] = timeval_totimespec(tv[1]);
     return utimensat(AT_FDCWD, filename, ts, AT_SYMLINK_NOFOLLOW);
   } else {
     return utimensat(AT_FDCWD, filename, 0, AT_SYMLINK_NOFOLLOW);

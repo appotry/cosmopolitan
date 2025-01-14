@@ -1,4 +1,3 @@
-// clang-format off
 /*
   Copyright (c) 1990-2010 Info-ZIP.  All rights reserved.
 
@@ -22,6 +21,19 @@
 
 #ifndef __unzpriv_h   /* prevent multiple inclusions */
 #define __unzpriv_h
+
+#include "libc/sysv/consts/s.h"
+#include "libc/calls/calls.h"
+#include "libc/str/str.h"
+#include "libc/str/locale.h"
+#include "libc/errno.h"
+#include "third_party/unzip/unzpriv.h"
+#include "libc/calls/calls.h"
+#include "third_party/zip/crypt.h"
+#include "libc/mem/mem.h"
+#include "libc/runtime/runtime.h"
+#include "libc/ctype.h"
+#include "third_party/unzip/unxcfg.h"
 
 /* First thing: Signal all following code that we compile UnZip utilities! */
 #ifndef UNZIP
@@ -207,16 +219,6 @@
 /*---------------------------------------------------------------------------
     Unix section:
   ---------------------------------------------------------------------------*/
-
-#include "libc/sysv/consts/s.h"
-#include "libc/calls/calls.h"
-#include "libc/str/str.h"
-#include "libc/unicode/locale.h"
-#include "libc/errno.h"
-#include "third_party/unzip/unzpriv.h"
-#include "libc/calls/calls.h"
-#include "libc/fmt/fmt.h"
-#include "third_party/unzip/unxcfg.h"
 
 
 /* ----------------------------------------------------------------------------
@@ -1925,20 +1927,6 @@ typedef struct _APIDocStruct {
     char *syntax;
     char *purpose;
 } APIDocStruct;
-
-
-
-
-/*************/
-/*  Globals  */
-/*************/
-
-#if (defined(OS2) && !defined(FUNZIP))
-#include "third_party/unzip/os2/os2data.h"
-#endif
-
-#include "third_party/unzip/globals.h"
-
 
 
 /*************************/

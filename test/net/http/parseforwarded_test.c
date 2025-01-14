@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2021 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -56,5 +56,5 @@ BENCH(ParseForwarded, bench) {
   uint32_t ip;
   uint16_t port;
   EZBENCH2("ParseForwarded 80", donothing,
-           ParseForwarded("203.0.113.42:31337", 20, &ip, &port));
+           ParseForwarded("203.0.113.42:31337", 18, &ip, &port));
 }

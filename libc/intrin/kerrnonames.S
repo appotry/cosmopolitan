@@ -1,5 +1,5 @@
 /*-*- mode:unix-assembly; indent-tabs-mode:t; tab-width:8; coding:utf-8     -*-│
-│vi: set et ft=asm ts=8 tw=8 fenc=utf-8                                     :vi│
+│ vi: set noet ft=asm ts=8 sw=8 fenc=utf-8                                 :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2021 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -17,18 +17,18 @@
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #include "libc/fmt/magnumstrs.internal.h"
-#include "libc/macros.internal.h"
+#include "libc/macros.h"
 
 	.macro	.e e
 	.long	\e - kErrnoNames
-	.long	1f - kErrnoNames
+	.long	.L\@ - kErrnoNames
 	.rodata.str1.1
-1:	.string	"\e"
+.L\@:	.string	"\e"
 	.previous
 	.endm
 
 	.section .rodata
-	.align	4
+	.balign	4
 	.underrun
 kErrnoNames:
 	.e	EINVAL
@@ -74,7 +74,6 @@ kErrnoNames:
 	.e	ELOOP
 	.e	ENOMSG
 	.e	EIDRM
-	.e	ETIME
 	.e	EPROTO
 	.e	EOVERFLOW
 	.e	EILSEQ
@@ -103,6 +102,7 @@ kErrnoNames:
 	.e	ESHUTDOWN
 	.e	ETOOMANYREFS
 	.e	ETIMEDOUT
+	.e	ETIME
 	.e	ECONNREFUSED
 	.e	EHOSTDOWN
 	.e	EHOSTUNREACH
@@ -117,6 +117,7 @@ kErrnoNames:
 	.e	ENONET
 	.e	ERESTART
 	.e	ENODATA
+	.e	EBADFD
 	.long	MAGNUM_TERMINATOR
 	.endobj	kErrnoNames,globl,hidden
 	.overrun

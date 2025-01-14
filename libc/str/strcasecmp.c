@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2020 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -16,14 +16,9 @@
 │ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR             │
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
+#include "libc/dce.h"
 #include "libc/str/str.h"
-
-static inline noasan uint64_t UncheckedAlignedRead64(const char *p) {
-  return (uint64_t)(255 & p[7]) << 070 | (uint64_t)(255 & p[6]) << 060 |
-         (uint64_t)(255 & p[5]) << 050 | (uint64_t)(255 & p[4]) << 040 |
-         (uint64_t)(255 & p[3]) << 030 | (uint64_t)(255 & p[2]) << 020 |
-         (uint64_t)(255 & p[1]) << 010 | (uint64_t)(255 & p[0]) << 000;
-}
+#include "libc/str/tab.h"
 
 /**
  * Compares NUL-terminated strings ascii case-insensitively.
@@ -36,8 +31,9 @@ static inline noasan uint64_t UncheckedAlignedRead64(const char *p) {
 int strcasecmp(const char *a, const char *b) {
   int x, y;
   size_t i = 0;
-  uint64_t v, w, d;
-  if (a == b) return 0;
+  uint64_t v, w;
+  if (a == b)
+    return 0;
   if (((uintptr_t)a & 7) == ((uintptr_t)b & 7)) {
     for (; (uintptr_t)(a + i) & 7; ++i) {
     CheckEm:
@@ -46,8 +42,8 @@ int strcasecmp(const char *a, const char *b) {
       }
     }
     for (;; i += 8) {
-      v = UncheckedAlignedRead64(a + i);
-      w = UncheckedAlignedRead64(b + i);
+      v = *(uint64_t *)(a + i);
+      w = *(uint64_t *)(b + i);
       w = (v ^ w) | (~v & (v - 0x0101010101010101) & 0x8080808080808080);
       if (w) {
         i += (unsigned)__builtin_ctzll(w) >> 3;
@@ -55,7 +51,10 @@ int strcasecmp(const char *a, const char *b) {
       }
     }
   } else {
-    while ((x = kToLower[a[i] & 255]) == (y = kToLower[b[i] & 255]) && y) ++i;
+    while ((x = kToLower[a[i] & 255]) == (y = kToLower[b[i] & 255]) && y)
+      ++i;
     return x - y;
   }
 }
+
+__weak_reference(strcasecmp, strcasecmp_l);

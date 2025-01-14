@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2021 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -16,6 +16,7 @@
 │ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR             │
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
+#include "libc/atomic.h"
 #include "libc/runtime/runtime.h"
 
 /**
@@ -30,9 +31,9 @@
  * short time period should say:
  *
  *     void foo() {
- *       --__strace;
+ *       strace_enabled(-1);
  *       bar();
- *       ++__strace;
+ *       strace_enabled(+1);
  *     }
  *
  * This way you still have some flexibility to force syscall tracing, by
@@ -40,4 +41,4 @@
  * under normal circumstances, `__strace` should only be either zero or
  * one.
  */
-_Atomic(int) __strace;
+int __strace;

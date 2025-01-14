@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2021 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -20,7 +20,11 @@
 #include "libc/testlib/ezbench.h"
 
 int __testlib_getcore(void) {
+#ifdef __x86__
   long tscaux;
   tscaux = rdpid();
   return TSC_AUX_CORE(tscaux);
+#else
+  return 0;
+#endif
 }

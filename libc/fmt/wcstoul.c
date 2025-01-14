@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2020 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -18,8 +18,11 @@
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #include "libc/errno.h"
 #include "libc/fmt/conv.h"
-#include "libc/fmt/strtol.internal.h"
+#include "libc/fmt/internal.h"
+#include "libc/limits.h"
+#include "libc/stdckdint.h"
 #include "libc/str/str.h"
+#include "libc/str/tab.h"
 
 /**
  * Decodes unsigned integer from wide string.
@@ -38,16 +41,27 @@ unsigned long wcstoul(const wchar_t *s, wchar_t **endptr, int base) {
   char t = 0;
   int d, c = *s;
   unsigned long x = 0;
-  CONSUME_SPACES(s, c);
+  CONSUME_SPACES(wchar_t, s, c);
   GET_SIGN(s, c, d);
   GET_RADIX(s, c, base);
   if ((c = kBase36[c & 255]) && --c < base) {
     t |= 1;
     do {
-      x *= base;
-      x += c;
+      if (ckd_mul(&x, x, base) || ckd_add(&x, x, c)) {
+        if (endptr) {
+          *endptr = (wchar_t *)(s + 1);
+        }
+        errno = ERANGE;
+        return ULONG_MAX;
+      }
     } while ((c = kBase36[*++s & 255]) && --c < base);
   }
-  if (t && endptr) *endptr = s;
+  if (t && endptr) {
+    *endptr = (wchar_t *)s;
+  }
   return d > 0 ? x : -x;
 }
+
+__weak_reference(wcstoul, wcstoumax);
+__weak_reference(wcstoul, wcstoull);
+__weak_reference(wcstoul, wcstoull_l);

@@ -1,10 +1,11 @@
 #ifndef Py__SOCKET_H
 #define Py__SOCKET_H
 #include "libc/sock/sock.h"
+#include "libc/sock/struct/sockaddr.h"
 #include "third_party/python/Include/object.h"
+#include "libc/sock/struct/sockaddr6.h"
 #include "third_party/python/Include/pytime.h"
 COSMOPOLITAN_C_START_
-/* clang-format off */
 
 /* Python module and C API name */
 #define PySocket_MODULE_NAME    "_socket"

@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:4;tab-width:4;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright The Mbed TLS Contributors                                          │
 │                                                                              │
@@ -16,8 +16,9 @@
 │ limitations under the License.                                               │
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #include "libc/log/log.h"
-#include "libc/macros.internal.h"
+#include "libc/macros.h"
 #include "libc/str/str.h"
+#include "libc/time.h"
 #include "third_party/mbedtls/common.h"
 #include "third_party/mbedtls/debug.h"
 #include "third_party/mbedtls/ecp.h"
@@ -26,14 +27,8 @@
 #include "third_party/mbedtls/profile.h"
 #include "third_party/mbedtls/ssl.h"
 #include "third_party/mbedtls/ssl_internal.h"
+__static_yoink("mbedtls_notice");
 
-asm(".ident\t\"\\n\\n\
-Mbed TLS (Apache 2.0)\\n\
-Copyright ARM Limited\\n\
-Copyright Mbed TLS Contributors\"");
-asm(".include \"libc/disclaimer.inc\"");
-
-/* clang-format off */
 /*
  *  SSLv3/TLSv1 server-side functions
  *
@@ -1363,7 +1358,7 @@ static int ssl_parse_client_hello_v2( mbedtls_ssl_context *ssl )
     /* [jart] grab some client ciphers for error messages */
     bzero(ssl->client_ciphers, sizeof(ssl->client_ciphers));
     for( i = j = 0, p = buf + 6; j < ciph_len; j += 3, p += 3 )
-        if( !p[0] && i < ARRAYLEN( ssl->client_ciphers ) )
+        if( !p[0] && i+1 < ARRAYLEN( ssl->client_ciphers ) )
             ssl->client_ciphers[i++] = p[1] << 8 | p[2];
 
 #if defined(MBEDTLS_SSL_SRV_RESPECT_CLIENT_PREFERENCE)
@@ -2208,7 +2203,7 @@ read_record_header:
     /* [jart] grab some client ciphers for error messages */
     bzero(ssl->client_ciphers, sizeof(ssl->client_ciphers));
     for( i = j = 0, p = buf + ciph_offset + 2; j < ciph_len; j += 2, p += 2 )
-        if( i < ARRAYLEN( ssl->client_ciphers ) )
+        if( i+1 < ARRAYLEN( ssl->client_ciphers ) )
             ssl->client_ciphers[i++] = p[0] << 8 | p[1];
 
     /*

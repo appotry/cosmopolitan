@@ -5,7 +5,6 @@
          '("__cplusplus"
            "__OBJC__"
            "__STRICT_ANSI__"
-           "__ELF__"
            "__VERSION__"
            "__OPTIMIZE__"
            "__OPTIMIZE_SIZE__"
@@ -17,6 +16,8 @@
            "__SIZE_TYPE__"
            "__PTRDIFF_TYPE__"
            "__WCHAR_TYPE__"
+           "__CHAR16_TYPE__"
+           "__CHAR32_TYPE__"
            "__WINT_TYPE__"
            "__INTMAX_TYPE__"
            "__DEPRECATED"
@@ -27,8 +28,8 @@
            "__LP64__"
            "__SSP__"
            "__SSP_ALL__"
+           "__unix"
            "__unix__"
-           "__mips__"
            "__vax__"
            "__ns16000__"
            "__pic__"
@@ -40,7 +41,9 @@
            "__code_model_medium__"))
 
         (cpp92
-         '("__BYTE_ORDER__"
+         '("__SEG_FS"
+           "__SEG_GS"
+           "__BYTE_ORDER__"
            "__ORDER_LITTLE_ENDIAN__"
            "__ORDER_BIG_ENDIAN__"
            "__ORDER_PDP_ENDIAN__"
@@ -55,6 +58,7 @@
            "__SSP_EXPLICIT__"
            "__SANITIZE_ADDRESS__"
            "__SANITIZE_THREAD__"
+           "__SANITIZE_MEMORY__"
            "__GCC_HAVE_SYNC_COMPARE_AND_SWAP_1"
            "__GCC_HAVE_SYNC_COMPARE_AND_SWAP_2"
            "__GCC_HAVE_SYNC_COMPARE_AND_SWAP_4"
@@ -66,20 +70,28 @@
            "__GCC_IEC_559"
            "__SUPPORT_SNAN__"
            "__GCC_IEC_559_COMPLEX"
-           "__NO_MATH_ERRNO__"
-           "__gnu__"))
+           "__gnu__"
+           "_OPENMP"))
 
-        (clang
-         '("__llvm__"))
+        (cuda
+         '("__NVCC__"
+           "__CUDA_ARCH__"))
+
+        (hip
+         '("__HIP__"
+           "__HIPCC__"
+           "__HIP_PLATFORM_AMD__"
+           "__HIP_DEVICE_COMPILE__"
+           "__AMD__"
+           "__AMDGCN__"
+           "__AMDGPU__"))
 
         (cosmo
-         '("__COSMOPOLITAN__"
-           "__ANDROID__"
-           "__LINKER__"))
+         '("__LINKER__"))
 
         )
     (concat "\\_<"
-            (regexp-opt (append clang cpp92 gcc412 cosmo))
+            (regexp-opt (append cpp92 gcc412 cuda hip cosmo))
             "\\_>")))
 
 (provide 'cosmo-platform-constants)

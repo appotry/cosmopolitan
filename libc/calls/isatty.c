@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2020 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -18,36 +18,40 @@
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #include "libc/calls/calls.h"
 #include "libc/calls/internal.h"
-#include "libc/calls/strace.internal.h"
 #include "libc/calls/struct/winsize.h"
 #include "libc/calls/syscall-nt.internal.h"
 #include "libc/calls/syscall-sysv.internal.h"
-#include "libc/dce.h"
+#include "libc/calls/syscall_support-sysv.internal.h"
 #include "libc/errno.h"
+#include "libc/intrin/strace.h"
 #include "libc/sysv/consts/termios.h"
+#include "libc/sysv/errfuns.h"
 
 /**
- * Returns true if file descriptor is backed by a terminal device.
+ * Tells if file descriptor is a terminal.
+ *
+ * @param fd is file descriptor
+ * @return 1 if is terminal, otherwise 0 w/ errno
+ * @raise EBADF if fd isn't a valid file descriptor
+ * @raise ENOTTY if fd is something other than a terminal
+ * @raise EPERM if pledge() was used without tty
  */
 bool32 isatty(int fd) {
-  int e;
   bool32 res;
   struct winsize ws;
-  e = errno;
-  if (fd >= 0) {
-    if (__isfdkind(fd, kFdZip)) {
-      res = false;
-    } else if (IsMetal()) {
-      res = false;
-    } else if (!IsWindows()) {
-      res = sys_ioctl(fd, TIOCGWINSZ, &ws) != -1;
-    } else {
-      res = sys_isatty_nt(fd);
-    }
+  if (__isfdkind(fd, kFdZip)) {
+    enotty();
+    res = false;
+  } else if (IsWindows() || IsMetal()) {
+    res = sys_isatty(fd);
+  } else if (!sys_ioctl(fd, TIOCGWINSZ, &ws)) {
+    res = true;
   } else {
     res = false;
+    if (errno != EBADF && errno != EPERM) {
+      enotty();
+    }
   }
   STRACE("isatty(%d) → %hhhd% m", fd, res);
-  errno = e;
   return res;
 }

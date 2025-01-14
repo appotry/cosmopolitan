@@ -1,5 +1,3 @@
-/* clang-format off */
-/* clang-format off */
 /* alloc.c -- Default memory allocation routines.
 
   (c) 1998-2006 (W3C) MIT, ERCIM, Keio University
@@ -13,6 +11,8 @@
 #include "third_party/tidy/forward.h"
 #include "libc/stdio/stdio.h"
 #include "libc/assert.h"
+#include "libc/runtime/runtime.h"
+#include "libc/mem/mem.h"
 #include "third_party/tidy/sprtf.h"
 
 static TidyMalloc  g_malloc  = NULL;

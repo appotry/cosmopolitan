@@ -1,5 +1,5 @@
 #-*-mode:makefile-gmake;indent-tabs-mode:t;tab-width:8;coding:utf-8-*-┐
-#───vi: set et ft=make ts=8 tw=8 fenc=utf-8 :vi───────────────────────┘
+#── vi: set et ft=make ts=8 sw=8 fenc=utf-8 :vi ──────────────────────┘
 #
 # SYNOPSIS
 #
@@ -33,96 +33,43 @@
 #
 # VARIABLES
 #
-#     CCFLAGS      gcc frontend flags (.i, .c, .cc, .f, .S, .lds, etc.)
+#   Our configuration variables, ordered by increasing preference:
+#
+#     CCFLAGS      frontend flags (.i, .c, .cc, .f, .S, .lds, etc.)
+#     OFLAGS       objectify flags (precludes -S and -E)
 #     CPPFLAGS     preprocessor flags (.h, .c, .cc, .S, .inc, .lds, etc.)
+#     TARGET_ARCH  microarchitecture flags (e.g. -march=native)
+#     COPTS        c/c++ flags (.c, .cc)
 #     CFLAGS       c flags (.c only)
 #     CXXFLAGS     c++ flags (.cc only)
-#     COPTS        c/c++ flags (.c, .cc)
 #     LDFLAGS      linker flags (don't use -Wl, frontend prefix)
 #     ASFLAGS      assembler flags (don't use -Wa, frontend prefix)
-#     TARGET_ARCH  microarchitecture flags (e.g. -march=native)
+#
+#   For each FOO above, there exists (by increasing preference)
+#
+#     DEFAULT_FOO  see build/definitions.mk
+#     CONFIG_FOO   see build/config.mk
+#     FOO          set ~/.cosmo.mk and target-specific
+#     OVERRIDE_FOO set ~/.cosmo.mk and target-specific (use rarely)
+#
 
-LC_ALL = C
-SOURCE_DATE_EPOCH = 0
-
-TAGS ?= /usr/bin/ctags  # emacs source builds or something breaks it
-ARFLAGS = rcsD
-ZFLAGS ?=
-XARGS ?= xargs -P4 -rs8000
-DOT ?= dot
-CLANG = clang
-FC = gfortran  #/opt/cross9f/bin/x86_64-linux-musl-gfortran
-TMPDIR = o/tmp
-
-AR = build/bootstrap/ar.com
-CP = build/bootstrap/cp.com
-RM = build/bootstrap/rm.com -f
-ECHO = build/bootstrap/echo.com
-TOUCH = build/bootstrap/touch.com
-PKG = build/bootstrap/package.com
-MKDEPS = build/bootstrap/mkdeps.com
-ZIPOBJ = build/bootstrap/zipobj.com
-MKDIR = build/bootstrap/mkdir.com -p
-COMPILE = build/bootstrap/compile.com -V9 $(QUOTA)
-
-COMMA := ,
-PWD := $(shell build/bootstrap/pwd.com)
-IMAGE_BASE_VIRTUAL ?= 0x400000
-
-IGNORE := $(shell $(ECHO) -2 ♥cosmo)
-IGNORE := $(shell $(MKDIR) o/tmp)
-
-ifneq ("$(wildcard o/third_party/gcc/bin/x86_64-pc-linux-gnu-as.exe)","")
-AS = o/third_party/gcc/bin/x86_64-pc-linux-gnu-as.exe
-CC = o/third_party/gcc/bin/x86_64-pc-linux-gnu-gcc.exe
-CXX = o/third_party/gcc/bin/x86_64-pc-linux-gnu-g++.exe
-CXXFILT = o/third_party/gcc/bin/x86_64-pc-linux-gnu-c++filt.exe
-LD = o/third_party/gcc/bin/x86_64-pc-linux-gnu-ld.bfd.exe
-NM = o/third_party/gcc/bin/x86_64-pc-linux-gnu-nm.exe
-GCC = o/third_party/gcc/bin/x86_64-pc-linux-gnu-gcc.exe
-STRIP = o/third_party/gcc/bin/x86_64-pc-linux-gnu-strip.exe
-OBJCOPY = o/third_party/gcc/bin/x86_64-pc-linux-gnu-objcopy.exe
-OBJDUMP = o/third_party/gcc/bin/x86_64-pc-linux-gnu-objdump.exe
-ADDR2LINE = $(shell build/bootstrap/pwd.com)/o/third_party/gcc/bin/x86_64-pc-linux-gnu-addr2line.exe
+ifeq ($(LANDLOCKMAKE_VERSION),)
+TMPSAFE = $(join $(TMPDIR)/,$(subst /,_,$@)).tmp
 else
-IGNORE := $(shell build/bootstrap/unbundle.com)
-AS = o/third_party/gcc/bin/x86_64-linux-musl-as
-CC = o/third_party/gcc/bin/x86_64-linux-musl-gcc
-CXX = o/third_party/gcc/bin/x86_64-linux-musl-g++
-CXXFILT = o/third_party/gcc/bin/x86_64-linux-musl-c++filt
-LD = o/third_party/gcc/bin/x86_64-linux-musl-ld.bfd
-NM = o/third_party/gcc/bin/x86_64-linux-musl-nm
-GCC = o/third_party/gcc/bin/x86_64-linux-musl-gcc
-STRIP = o/third_party/gcc/bin/x86_64-linux-musl-strip
-OBJCOPY = o/third_party/gcc/bin/x86_64-linux-musl-objcopy
-OBJDUMP = o/third_party/gcc/bin/x86_64-linux-musl-objdump
-ADDR2LINE = $(shell build/bootstrap/pwd.com)/o/third_party/gcc/bin/x86_64-linux-musl-addr2line
+TMPSAFE = $(TMPDIR)/
 endif
-
-export ADDR2LINE
-export LC_ALL
-export MKDIR
-export MODE
-export SOURCE_DATE_EPOCH
-export TMPDIR
-
-FTRACE =								\
-	-pg
 
 BACKTRACES =								\
 	-fno-schedule-insns2						\
-	-fno-omit-frame-pointer						\
 	-fno-optimize-sibling-calls					\
 	-mno-omit-leaf-frame-pointer
 
-SANITIZER =								\
-	-fsanitize=address
-
 NO_MAGIC =								\
-	-mno-fentry							\
+	-ffreestanding							\
 	-fno-stack-protector						\
 	-fwrapv								\
-	-fno-sanitize=all
+	-fno-sanitize=all						\
+	-fpatchable-function-entry=0,0
 
 OLD_CODE =								\
 	-fno-strict-aliasing						\
@@ -133,21 +80,13 @@ TRADITIONAL =								\
 	-Wno-return-type						\
 	-Wno-pointer-sign
 
-DEFAULT_CCFLAGS =							\
+DEFAULT_CCFLAGS +=							\
 	-Wall								\
 	-Werror								\
-	-fdebug-prefix-map='$(PWD)'=					\
+	-fno-omit-frame-pointer						\
 	-frecord-gcc-switches
 
-DEFAULT_OFLAGS =							\
-	-g								\
-	-gdescribe-dies
-
-DEFAULT_COPTS =								\
-	-mno-red-zone							\
-	-fno-math-errno							\
-	-fno-trapping-math						\
-	-fno-fp-int-builtin-inexact					\
+DEFAULT_COPTS ?=							\
 	-fno-ident							\
 	-fno-common							\
 	-fno-gnu-unique							\
@@ -155,53 +94,85 @@ DEFAULT_COPTS =								\
 	-fstrict-overflow						\
 	-fno-semantic-interposition
 
+ifeq ($(ARCH), x86_64)
+# Microsoft says "[a]ny memory below the stack beyond the red zone
+# [note: Windows defines the x64 red zone size as 0] is considered
+# volatile and may be modified by the operating system at any time."
+# https://devblogs.microsoft.com/oldnewthing/20190111-00/?p=100685
+DEFAULT_COPTS +=							\
+	-mno-red-zone							\
+	-mno-tls-direct-seg-refs
+endif
+
+ifeq ($(ARCH), aarch64)
+#
+# - Apple says in "Writing ARM64 code for Apple platforms" that we're
+#   not allowed to use the x18 register.
+#
+# - Cosmopolitan Libc uses x28 for thread-local storage because Apple
+#   forbids us from using tpidr_el0 too.
+#
+DEFAULT_COPTS +=							\
+	-ffixed-x18							\
+	-ffixed-x28							\
+	-fsigned-char
+endif
+
 MATHEMATICAL =								\
 	-O3								\
 	-fwrapv
 
-DEFAULT_CPPFLAGS =							\
-	-DCOSMO								\
+DEFAULT_CPPFLAGS +=							\
+	-D_COSMO_SOURCE							\
 	-DMODE='"$(MODE)"'						\
-	-DIMAGE_BASE_VIRTUAL=$(IMAGE_BASE_VIRTUAL)			\
+	-Wno-prio-ctor-dtor						\
+	-Wno-unknown-pragmas						\
 	-nostdinc							\
-	-iquote.
+	-iquote.							\
+	-isystem libc/isystem
 
 DEFAULT_CFLAGS =							\
-	-std=gnu2x
+	-std=gnu23
 
 DEFAULT_CXXFLAGS =							\
-	-fno-rtti							\
-	-fno-exceptions							\
+	-std=gnu++23							\
 	-fuse-cxa-atexit						\
-	-fno-threadsafe-statics						\
 	-Wno-int-in-bool-context					\
-	-Wno-narrowing
+	-Wno-narrowing							\
+	-Wno-literal-suffix						\
+	-isystem third_party/libcxx
 
 DEFAULT_ASFLAGS =							\
 	-W								\
 	-I.								\
-	--noexecstack							\
-	--nocompress-debug-sections
+	--noexecstack
 
 DEFAULT_LDFLAGS =							\
 	-static								\
 	-nostdlib							\
-	-melf_x86_64							\
+	-znorelro							\
 	--gc-sections							\
+	-z noexecstack							\
 	--build-id=none							\
-	--no-dynamic-linker						\
-	-zmax-page-size=0x1000 #--cref -Map=$@.map
+	--no-dynamic-linker
 
-ZIPOBJ_FLAGS =								\
-	 -b$(IMAGE_BASE_VIRTUAL)
+# # generate linker report files
+# DEFAULT_LDFLAGS += --cref -Map=$@.map
 
-PYFLAGS =								\
-	 -b$(IMAGE_BASE_VIRTUAL)
+ifeq ($(ARCH), aarch64)
+DEFAULT_LDFLAGS +=							\
+	-zmax-page-size=0x4000						\
+	-zcommon-page-size=0x4000					\
+	-znorelro
+else
+DEFAULT_LDFLAGS +=							\
+	-zmax-page-size=0x4000						\
+	-zcommon-page-size=0x1000
+endif
 
 ASONLYFLAGS =								\
 	-c								\
-	-g								\
-	--debug-prefix-map='$(PWD)'=
+	-g
 
 DEFAULT_LDLIBS =
 
@@ -230,7 +201,7 @@ cpp.flags =								\
 	$(CONFIG_CPPFLAGS)						\
 	$(CPPFLAGS)							\
 	$(OVERRIDE_CPPFLAGS)						\
-	-includelibc/integral/normalize.inc
+	-include libc/integral/normalize.inc
 
 copt.flags =								\
 	$(TARGET_ARCH)							\
@@ -275,40 +246,31 @@ LD.libs =								\
 	$(CONFIG_LIBS)							\
 	$(LIBS)
 
-COMPILE.c.flags = $(cc.flags) $(cpp.flags) $(copt.flags) $(c.flags)
-COMPILE.cxx.flags = $(cc.flags) $(cpp.flags) $(copt.flags) $(cxx.flags)
-COMPILE.f.flags = $(cc.flags) $(copt.flags) $(f.flags)
-COMPILE.F.flags = $(cc.flags) $(cpp.flags) $(copt.flags) $(f.flags)
+COMPILE.c.flags = $(cc.flags) $(copt.flags) $(cpp.flags) $(c.flags)
+COMPILE.cxx.flags = $(cc.flags) $(copt.flags) $(cxx.flags) $(cpp.flags)
 COMPILE.i.flags = $(cc.flags) $(copt.flags) $(c.flags)
 COMPILE.ii.flags = $(cc.flags) $(copt.flags) $(cxx.flags)
 LINK.flags = $(DEFAULT_LDFLAGS) $(CONFIG_LDFLAGS) $(LDFLAGS)
-OBJECTIFY.c.flags = $(OBJECTIFY.S.flags) $(copt.flags) $(c.flags)
-OBJECTIFY.cxx.flags = $(OBJECTIFY.S.flags) $(copt.flags) $(cxx.flags)
+OBJECTIFY.c.flags = $(cc.flags) $(o.flags) $(S.flags) $(cpp.flags) $(copt.flags) $(c.flags)
+OBJECTIFY.cxx.flags = $(cc.flags) $(o.flags) $(S.flags) $(cxx.flags) $(cpp.flags) $(copt.flags)
 OBJECTIFY.s.flags = $(ASONLYFLAGS) $(s.flags)
-OBJECTIFY.S.flags = $(copt.flags) $(cc.flags) $(o.flags) $(cpp.flags) $(S.flags)
-OBJECTIFY.f.flags = $(copt.flags) $(cc.flags) $(o.flags) $(copt.flags) $(S.flags) $(f.flags)
-OBJECTIFY.F.flags = $(OBJECTIFY.f.flags) $(cpp.flags)
+OBJECTIFY.S.flags = $(cc.flags) $(o.flags) $(S.flags) $(cpp.flags)
 PREPROCESS.flags = -E $(copt.flags) $(cc.flags) $(cpp.flags)
 PREPROCESS.lds.flags = -D__LINKER__ $(filter-out -g%,$(PREPROCESS.flags)) -P -xc
 
 COMPILE.c = $(CC) -S $(COMPILE.c.flags)
 COMPILE.cxx = $(CXX) -S $(COMPILE.cxx.flags)
 COMPILE.i = $(CC) -S $(COMPILE.i.flags)
-COMPILE.f = $(FC) -S $(COMPILE.f.flags)
-COMPILE.F = $(FC) -S $(COMPILE.F.flags)
 OBJECTIFY.s = $(AS) $(OBJECTIFY.s.flags)
 OBJECTIFY.S = $(CC) $(OBJECTIFY.S.flags) -c
-OBJECTIFY.f = $(FC) $(OBJECTIFY.f.flags) -c
-OBJECTIFY.F = $(FC) $(OBJECTIFY.F.flags) -c
 OBJECTIFY.c = $(CC) $(OBJECTIFY.c.flags) -c
 OBJECTIFY.cxx = $(CXX) $(OBJECTIFY.cxx.flags) -c
 PREPROCESS = $(CC) $(PREPROCESS.flags)
 PREPROCESS.lds = $(CC) $(PREPROCESS.lds.flags)
 LINK = $(LD) $(LINK.flags)
 ELF = o/libc/elf/elf.lds
-ELFLINK = $(COMPILE) -ALINK.elf $(LINK) $(LINKARGS) $(OUTPUT_OPTION)
+ELFLINK = $(COMPILE) -ALINK.elf $(LINK) $(LINKARGS) $(OUTPUT_OPTION) && $(COMPILE) -AFIXUP.ape -T$@ $(FIXUPOBJ) $@
 LINKARGS = $(patsubst %.lds,-T %.lds,$(call uniqr,$(LD.libs) $(filter-out %.pkg,$^)))
-LOLSAN = build/lolsan -b $(IMAGE_BASE_VIRTUAL)
 
 # The compiler won't generate %xmm code for sources extensioned .greg.c,
 # which is needed for C modules wanting to run at the executive level or
@@ -323,72 +285,7 @@ OBJECTIFY.greg.c =							\
 	-fno-optimize-sibling-calls					\
 	-fno-sanitize=all						\
 	-ffreestanding							\
-	-mno-fentry							\
 	-fwrapv								\
-	-c
-
-OBJECTIFY.ansi.c = $(CC) $(OBJECTIFY.c.flags) -ansi -Wextra -Werror -pedantic-errors -c
-OBJECTIFY.c99.c = $(CC) $(OBJECTIFY.c.flags) -std=c99 -Wextra -Werror -pedantic-errors -c
-OBJECTIFY.c11.c = $(CC) $(OBJECTIFY.c.flags) -std=c11 -Wextra -Werror -pedantic-errors -c
-OBJECTIFY.c2x.c = $(CC) $(OBJECTIFY.c.flags) -std=c2x -Wextra -Werror -pedantic-errors -c
-
-OBJECTIFY.real.c =							\
-	$(GCC)								\
-	-x-no-pg							\
-	$(OBJECTIFY.c.flags)						\
-	-wrapper build/realify.sh					\
-	-D__REAL_MODE__							\
-	-ffixed-r8							\
-	-ffixed-r9							\
-	-ffixed-r10							\
-	-ffixed-r11							\
-	-ffixed-r12							\
-	-ffixed-r13							\
-	-ffixed-r14							\
-	-ffixed-r15							\
-	-mno-red-zone							\
-	-fcall-used-rbx							\
-	-fno-jump-tables						\
-	-fno-shrink-wrap						\
-	-fno-schedule-insns2						\
-	-flive-range-shrinkage						\
-	-fno-omit-frame-pointer						\
-	-momit-leaf-frame-pointer					\
-	-mpreferred-stack-boundary=3					\
-	-fno-delete-null-pointer-checks					\
-	-c
-
-OBJECTIFY.ncabi.c =							\
-	$(GCC)								\
-	$(OBJECTIFY.c.flags)						\
-	-mno-sse							\
-	-mfpmath=387							\
-	-mno-fentry							\
-	-fno-stack-protector						\
-	-fno-instrument-functions					\
-	-fno-optimize-sibling-calls					\
-	-fno-sanitize=all						\
-	-fcall-saved-rcx						\
-	-fcall-saved-rdx						\
-	-fcall-saved-rdi						\
-	-fcall-saved-rsi						\
-	-fcall-saved-r8							\
-	-fcall-saved-r9							\
-	-fcall-saved-r10						\
-	-fcall-saved-r11						\
-	-c								\
-	-xc
-
-OBJECTIFY.initabi.c =							\
-	$(GCC)								\
-	$(OBJECTIFY.c.flags)						\
-	-mno-fentry							\
-	-fno-stack-protector						\
-	-fno-instrument-functions					\
-	-fno-optimize-sibling-calls					\
-	-fno-sanitize=all						\
-	-fcall-saved-rdi						\
-	-fcall-saved-rsi						\
 	-c
 
 TAGSFLAGS =								\

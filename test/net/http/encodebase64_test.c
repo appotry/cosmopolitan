@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2021 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -16,9 +16,9 @@
 │ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR             │
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
+#include "libc/mem/gc.h"
 #include "libc/mem/mem.h"
-#include "libc/rand/rand.h"
-#include "libc/runtime/gc.internal.h"
+#include "libc/stdio/rand.h"
 #include "libc/str/str.h"
 #include "libc/testlib/ezbench.h"
 #include "libc/testlib/hyperion.h"
@@ -75,7 +75,7 @@ TEST(EncodeBase64, testOom_returnsNullAndSetsSizeToZero) {
 TEST(Base64, RoundTrip) {
   for (i = 0; i < 1000; ++i) {
     n = rand() % 32;
-    rngset(b, n, rand64, -1);
+    rngset(b, n, _rand64, -1);
     p = EncodeBase64(b, n, &m);
     q = DecodeBase64(p, m, &m);
     ASSERT_EQ(n, m);
@@ -88,7 +88,7 @@ TEST(Base64, RoundTrip) {
 TEST(Base64, Fuzz) {
   for (i = 0; i < 1000; ++i) {
     n = rand() % 32;
-    rngset(b, n, rand64, -1);
+    rngset(b, n, _rand64, -1);
     free(DecodeBase64(p, m, 0));
   }
 }

@@ -1,5 +1,5 @@
 /*-*- mode:unix-assembly; indent-tabs-mode:t; tab-width:8; coding:utf-8     -*-│
-│vi: set et ft=asm ts=8 tw=8 fenc=utf-8                                     :vi│
+│ vi: set noet ft=asm ts=8 sw=8 fenc=utf-8                                 :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │                                                                              │
 │  Copyright 2015 Intel Corporation                                            │
@@ -31,16 +31,17 @@
 │  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.        │
 │                                                                              │
 ╚─────────────────────────────────────────────────────────────────────────────*/
-#include "libc/macros.internal.h"
+#include "libc/macros.h"
 
-.text
-.align 32
-.ident "\n\
+.section .notice,"aR",@progbits
+.asciz "\n\n\
 Intel SHA-NI (BSD-3 License)\n\
 Copyright 2015 Intel Corporation\n\
 Sean Gulley <sean.m.gulley@intel.com>\n\
-Tim Chen <tim.c.chen@linux.intel.com>\n"
-.include "libc/disclaimer.inc"
+Tim Chen <tim.c.chen@linux.intel.com>"
+
+.text
+.balign 32
 
 #define DIGEST_PTR	%rdi	/* 1st arg */
 #define DATA_PTR	%rsi	/* 2nd arg */
@@ -75,14 +76,15 @@ Tim Chen <tim.c.chen@linux.intel.com>\n"
 //	    void sha256_transform_ni(uint32_t digest[static 8],
 //	                             const void *data,
 //	                             int32_t numBlocks);
-//	
+//
 //	@param	%rdi points to output digest
 //	@param	%rsi points to input data
 //	@param	%rdx is number of blocks to process
 //	@see	X86_HAVE(SHA)
+	.ftrace1
 sha256_transform_ni:
+	.ftrace2
 	.leafprologue
-	.profilable
 	shl	$6,NUM_BLKS			# convert to bytes
 	jz	.Ldone_hash
 	add	DATA_PTR,NUM_BLKS		# pointer to end of data
@@ -312,7 +314,7 @@ sha256_transform_ni:
 	.endfn	sha256_transform_ni,globl
 
 .section .rodata.cst16.PSHUFFLE_BYTE_FLIP_MASK,"aM",@progbits,16
-.align 16
+.balign 16
 PSHUFFLE_BYTE_FLIP_MASK:
 	.octa	0x0c0d0e0f08090a0b0405060700010203
 	.endobj	PSHUFFLE_BYTE_FLIP_MASK

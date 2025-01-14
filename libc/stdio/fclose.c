@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=8 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=8 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2020 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -16,45 +16,26 @@
 │ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR             │
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
-#include "libc/assert.h"
 #include "libc/calls/calls.h"
 #include "libc/errno.h"
-#include "libc/mem/mem.h"
-#include "libc/runtime/runtime.h"
 #include "libc/stdio/internal.h"
-#include "libc/stdio/stdio.h"
 
 /**
  * Closes standard i/o stream and its underlying thing.
- *
- * @param f is the file object, which is always free if it's heap,
- *     otherwise its resources are released and fields updated
- * @return 0 on success or -1 on error, which can be a trick for
- *     differentiating between EOF and real errors during previous
- *     i/o calls, without needing to call ferror()
- * @see fclose_s()
+ * @return 0 on success, or EOF w/ errno
  */
 int fclose(FILE *f) {
-  int rc;
-  if (!f) return 0;
-  __fflush_unregister(f);
-  fflush(f);
-  free_s(&f->getln);
-  if (!f->nofree) {
-    free_s(&f->buf);
-  }
-  f->state = EOF;
-  if (f->noclose) {
+  int rc = 0;
+  if (f) {
+    flockfile(f);
+    rc |= fflush(f);
+    int fd = f->fd;
     f->fd = -1;
-  } else if (close_s(&f->fd) == -1) {
-    f->state = errno;
+    f->state = EOF;
+    if (fd != -1)
+      rc |= close(fd);
+    funlockfile(f);
+    __stdio_unref(f);
   }
-  if (f->state == EOF) {
-    rc = 0;
-  } else {
-    errno = f->state;
-    rc = EOF;
-  }
-  free_s(&f);
   return rc;
 }

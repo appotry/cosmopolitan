@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:t;c-basic-offset:8;tab-width:8;coding:utf-8   -*-│
-│vi: set et ft=c ts=8 tw=8 fenc=utf-8                                       :vi│
+│ vi: set noet ft=c ts=8 sw=8 fenc=utf-8                                   :vi │
 ╚──────────────────────────────────────────────────────────────────────────────╝
 │                                                                              │
 │  Musl Libc                                                                   │
@@ -27,15 +27,9 @@
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #include "libc/math.h"
 #include "libc/tinymath/kernel.internal.h"
+__static_yoink("musl_libc_notice");
+__static_yoink("fdlibm_notice");
 
-asm(".ident\t\"\\n\\n\
-fdlibm (fdlibm license)\\n\
-Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.\"");
-asm(".ident\t\"\\n\\n\
-Musl libc (MIT License)\\n\
-Copyright 2005-2014 Rich Felker, et. al.\"");
-asm(".include \"libc/disclaimer.inc\"");
-/* clang-format off */
 
 /* origin: FreeBSD /usr/src/lib/msun/src/e_lgamma_r.c */
 /*
@@ -63,7 +57,7 @@ asm(".include \"libc/disclaimer.inc\"");
  *                          = log(6.3*5.3) + lgamma(5.3)
  *                          = log(6.3*5.3*4.3*3.3*2.3) + lgamma(2.3)
  *   2. Polynomial approximation of lgamma around its
- *      minimun ymin=1.461632144968362245 to maintain monotonicity.
+ *      minimum ymin=1.461632144968362245 to maintain monotonicity.
  *      On [ymin-0.23, ymin+0.27] (i.e., [1.23164,1.73163]), use
  *              Let z = x-ymin;
  *              lgamma(x) = -1.214862905358496078218 + z^2*poly(z)
@@ -210,7 +204,7 @@ static double sin_pi(double x)
 double lgamma_r(double x, int *signgamp)
 {
 	union {double f; uint64_t i;} u = {x};
-	double_t t,y,z,nadj,p,p1,p2,p3,q,r,w;
+	double_t t,y,z,nadj=0,p,p1,p2,p3,q,r,w;
 	uint32_t ix;
 	int sign,i;
 
@@ -319,3 +313,7 @@ double lgamma_r(double x, int *signgamp)
 		r = nadj - r;
 	return r;
 }
+
+#if LDBL_MANT_DIG == 53 && LDBL_MAX_EXP == 1024
+__weak_reference(lgamma_r, lgammal_r);
+#endif

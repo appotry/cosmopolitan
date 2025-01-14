@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2021 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -17,9 +17,14 @@
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #include "libc/calls/calls.h"
+#include "libc/calls/struct/rusage.h"
+#include "libc/calls/struct/sigaction.h"
+#include "libc/calls/struct/sigset.h"
 #include "libc/errno.h"
+#include "libc/runtime/runtime.h"
 #include "libc/sysv/consts/sig.h"
-#include "libc/x/x.h"
+#include "libc/x/xsigaction.h"
+#include "libc/x/xspawn.h"
 
 /**
  * Spawns process using vfork().
@@ -43,7 +48,7 @@ int xvspawn(void f(void *), void *ctx, struct rusage *r) {
       xsigaction(SIGQUIT, SIG_DFL, 0, 0, 0);
       sigprocmask(SIG_SETMASK, &savemask, 0);
       f(ctx);
-      _exit(127);
+      _Exit(127);
     }
     while (wait4(pid, &wstatus, 0, r) == -1) {
       if (errno != EINTR) {

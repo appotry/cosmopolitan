@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2021 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -16,8 +16,11 @@
 │ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR             │
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
+#include "libc/ctype.h"
 #include "libc/fmt/conv.h"
-#include "libc/fmt/fmt.h"
+#include "libc/stdckdint.h"
+#include "libc/str/str.h"
+#include "libc/sysv/errfuns.h"
 
 static int GetExponent(int c) {
   switch (c) {
@@ -64,27 +67,41 @@ static int GetExponent(int c) {
  * characters after it (e.g. kbit, Mibit, TiB) are ignored. Spaces
  * before the integer are ignored, and overflows will be detected.
  *
+ * Negative numbers are permissible, as well as a leading `+` sign. To
+ * tell the difference between an error return and `-1` you must clear
+ * `errno` before calling and test whether it changed.
+ *
  * @param s is non-null nul-terminated input string
  * @param b is multiplier which should be 1000 or 1024
  * @return size greater than or equal 0 or -1 on error
+ * @error EINVAL if error is due to bad syntax
+ * @error EOVERFLOW if error is due to overflow
  */
 long sizetol(const char *s, long b) {
   long x;
-  int c, e;
+  int c, e, d;
   do {
     c = *s++;
   } while (c == ' ' || c == '\t');
-  if (!isdigit(c)) return -1;
+  d = c == '-' ? -1 : 1;
+  if (c == '-' || c == '+')
+    c = *s++;
+  if (!isdigit(c)) {
+    return einval();
+  }
   x = 0;
   do {
-    if (__builtin_mul_overflow(x, 10, &x) ||
-        __builtin_add_overflow(x, c - '0', &x)) {
-      return -1;
+    if (ckd_mul(&x, x, 10) || ckd_add(&x, x, (c - '0') * d)) {
+      return eoverflow();
     }
   } while (isdigit((c = *s++)));
-  if ((e = GetExponent(c)) == -1) return -1;
+  if ((e = GetExponent(c)) == -1) {
+    return einval();
+  }
   while (e--) {
-    if (__builtin_mul_overflow(x, b, &x)) return -1;
+    if (ckd_mul(&x, x, b)) {
+      return eoverflow();
+    }
   }
   return x;
 }

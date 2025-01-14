@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=8 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2020 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -16,21 +16,24 @@
 │ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR             │
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
+#include "libc/intrin/dll.h"
 #include "libc/stdio/internal.h"
-#include "libc/stdio/stdio.h"
+#include "libc/sysv/consts/fileno.h"
+#include "libc/sysv/consts/o.h"
 
-STATIC_YOINK("_init_stderr");
+static FILE __stderr = {
+    .fd = STDERR_FILENO,
+    .bufmode = _IONBF,
+    .oflags = O_WRONLY,
+    .lock = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP,
+    .elem = {&__stderr.elem, &__stderr.elem},
+};
 
 /**
  * Pointer to standard error stream.
  */
-FILE *stderr;
+FILE *stderr = &__stderr;
 
-hidden FILE __stderr;
-hidden unsigned char __stderr_buf[BUFSIZ];
-
-static textstartup void __stderr_init() {
-  __fflush_register(stderr);
+__attribute__((__constructor__(60))) static textstartup void stderr_init(void) {
+  dll_make_last(&__stdio.files, &__stderr.elem);
 }
-
-const void *const __stderr_ctor[] initarray = {__stderr_init};

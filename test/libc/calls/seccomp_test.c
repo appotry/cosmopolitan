@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2022 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -18,10 +18,10 @@
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #include "libc/calls/calls.h"
 #include "libc/calls/internal.h"
-#include "libc/calls/struct/bpf.h"
-#include "libc/calls/struct/filter.h"
+#include "libc/calls/struct/bpf.internal.h"
+#include "libc/calls/struct/filter.internal.h"
 #include "libc/calls/struct/iovec.h"
-#include "libc/calls/struct/seccomp.h"
+#include "libc/calls/struct/seccomp.internal.h"
 #include "libc/calls/syscall_support-sysv.internal.h"
 #include "libc/errno.h"
 #include "libc/runtime/runtime.h"
@@ -33,8 +33,27 @@
 #include "libc/testlib/testlib.h"
 #include "tool/net/sandbox.h"
 
+void SetUpOnce(void) {
+  ASSERT_SYS(0, 0, pledge("stdio proc", 0));
+}
+
+// It's been reported that Chromebooks return EINVAL here.
+bool CanUseSeccomp(void) {
+  int ws, pid;
+  ASSERT_NE(-1, (pid = fork()));
+  if (!pid) {
+    if (seccomp(SECCOMP_SET_MODE_STRICT, 0, 0) != -1) {
+      _Exit1(0);
+    } else {
+      _Exit1(1);
+    }
+  }
+  EXPECT_NE(-1, wait(&ws));
+  return WIFEXITED(ws) && !WEXITSTATUS(ws);
+}
+
 void SetUp(void) {
-  if (!__is_linux_2_6_23()) {
+  if (!IsLinux() || !__is_linux_2_6_23() || !CanUseSeccomp()) {
     exit(0);
   }
 }

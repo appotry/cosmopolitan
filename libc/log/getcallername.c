@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2021 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -21,11 +21,12 @@
 #include "libc/runtime/symbols.internal.h"
 
 /**
- * Returns name of funciton that called caller function.
+ * Returns name of function that called caller function.
  */
 const char *GetCallerName(const struct StackFrame *bp) {
-  struct SymbolTable *st;
-  if (!bp && (bp = __builtin_frame_address(0))) bp = bp->next;
-  if (bp) return __get_symbol_by_addr(bp->addr);
+  if (!bp && (bp = __builtin_frame_address(0)))
+    bp = bp->next;
+  if (bp)
+    return GetSymbolByAddr(bp->addr);
   return 0;
 }

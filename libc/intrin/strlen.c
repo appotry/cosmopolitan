@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2021 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -17,10 +17,39 @@
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #include "libc/dce.h"
-#include "libc/intrin/asan.internal.h"
 #include "libc/str/str.h"
+#ifndef __aarch64__
 
-typedef char xmm_t __attribute__((__vector_size__(16), __aligned__(16)));
+static __vex size_t __strlen(const char *s) {
+#if defined(__x86_64__) && !defined(__chibicc__)
+  typedef char xmm_t __attribute__((__vector_size__(16), __aligned__(16)));
+  xmm_t z = {0};
+  unsigned m, k = (uintptr_t)s & 15;
+  const xmm_t *p = (const xmm_t *)((uintptr_t)s & -16);
+  m = __builtin_ia32_pmovmskb128(*p == z) >> k << k;
+  while (!m)
+    m = __builtin_ia32_pmovmskb128(*++p == z);
+  return (const char *)p + __builtin_ctzl(m) - s;
+#else
+#define ONES ((word) - 1 / 255)
+#define BANE (ONES * (255 / 2 + 1))
+  typedef unsigned long mayalias word;
+  word w;
+  unsigned k;
+  const word *p;
+  k = (uintptr_t)s & (sizeof(word) - 1);
+  p = (const word *)((uintptr_t)s & -sizeof(word));
+  w = *p;
+  w = ~w & (w - ONES) & BANE;
+  w >>= k << 3;
+  w <<= k << 3;
+  while (!w) {
+    w = *++p;
+    w = ~w & (w - ONES) & BANE;
+  }
+  return (const char *)p + (__builtin_ctzl(w) >> 3) - s;
+#endif
+}
 
 /**
  * Returns length of NUL-terminated string.
@@ -29,15 +58,8 @@ typedef char xmm_t __attribute__((__vector_size__(16), __aligned__(16)));
  * @return number of bytes (excluding NUL)
  * @asyncsignalsafe
  */
-noasan size_t strlen(const char *s) {
-  size_t n;
-  xmm_t v, z = {0};
-  unsigned m, k = (uintptr_t)s & 15;
-  const xmm_t *p = (const xmm_t *)((uintptr_t)s & -16);
-  if (IsAsan()) __asan_verify(s, 1);
-  m = __builtin_ia32_pmovmskb128(*p == z) >> k << k;
-  while (!m) m = __builtin_ia32_pmovmskb128(*++p == z);
-  n = (const char *)p + __builtin_ctzl(m) - s;
-  if (IsAsan()) __asan_verify(s, n);
-  return n;
+size_t strlen(const char *s) {
+  return __strlen(s);
 }
+
+#endif /* __aarch64__ */

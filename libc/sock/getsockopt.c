@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2020 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -16,10 +16,11 @@
 │ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR             │
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
-#include "libc/calls/strace.internal.h"
+#include "libc/calls/internal.h"
+#include "libc/intrin/fds.h"
 #include "libc/dce.h"
-#include "libc/fmt/magnumstrs.internal.h"
-#include "libc/intrin/asan.internal.h"
+#include "libc/intrin/describeflags.h"
+#include "libc/intrin/strace.h"
 #include "libc/sock/internal.h"
 #include "libc/sock/sock.h"
 #include "libc/sock/syscall_fd.internal.h"
@@ -32,6 +33,10 @@
  * @param optname can be SO_{REUSE{PORT,ADDR},KEEPALIVE,etc.} etc.
  * @return 0 on success, or -1 w/ errno
  * @error ENOPROTOOPT for unknown (level,optname)
+ * @error EINVAL if `out_optlen` is invalid somehow
+ * @error ENOTSOCK if `fd` is valid but not a socket
+ * @error EBADF if `fd` isn't valid
+ * @error EFAULT if optval memory isn't valid
  * @see libc/sysv/consts.sh for tuning catalogue
  * @see setsockopt()
  */
@@ -39,24 +44,22 @@ int getsockopt(int fd, int level, int optname, void *out_opt_optval,
                uint32_t *out_optlen) {
   int rc;
 
-  if (!level || !optname) {
-    rc = enoprotoopt(); /* our sysvconsts definition */
-  } else if (optname == -1) {
-    rc = 0; /* our sysvconsts definition */
-  } else if (IsAsan() && (out_opt_optval && out_optlen &&
-                          (!__asan_is_valid(out_optlen, sizeof(uint32_t)) ||
-                           !__asan_is_valid(out_opt_optval, *out_optlen)))) {
-    rc = efault();
+  if (level == -1 || !optname) {
+    rc = enoprotoopt();  // see libc/sysv/consts.sh
+  } else if (fd < g_fds.n && g_fds.p[fd].kind == kFdZip) {
+    rc = enotsock();
   } else if (!IsWindows()) {
     rc = sys_getsockopt(fd, level, optname, out_opt_optval, out_optlen);
+  } else if (!__isfdopen(fd)) {
+    rc = ebadf();
   } else if (__isfdkind(fd, kFdSocket)) {
     rc = sys_getsockopt_nt(&g_fds.p[fd], level, optname, out_opt_optval,
                            out_optlen);
   } else {
-    rc = ebadf();
+    rc = enotsock();
   }
 
-#ifdef SYSDEBUG
+#if SYSDEBUG
   if (out_opt_optval && out_optlen && rc != -1) {
     STRACE("getsockopt(%d, %s, %s, [%#.*hhs], [%d]) → %d% lm", fd,
            DescribeSockLevel(level), DescribeSockOptname(level, optname),

@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2021 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -194,6 +194,18 @@ const char *GetHttpHeaderName(int h) {
       return "Sec-Fetch-User";
     case kHttpSecFetchDest:
       return "Sec-Fetch-Dest";
+    case kHttpCfRay:
+      return "CF-RAY";
+    case kHttpCfVisitor:
+      return "CF-Visitor";
+    case kHttpCfConnectingIp:
+      return "CF-Connecting-IP";
+    case kHttpCfIpcountry:
+      return "CF-IPCountry";
+    case kHttpCdnLoop:
+      return "CDN-Loop";
+    case kHttpSecChUaPlatform:
+      return "Sec-CH-UA-Platform";
     default:
       return NULL;
   }

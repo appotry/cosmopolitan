@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2020 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -17,95 +17,124 @@
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #include "libc/calls/calls.h"
+#include "libc/errno.h"
 #include "libc/fmt/itoa.h"
 #include "libc/intrin/cmpxchg.h"
 #include "libc/intrin/kprintf.h"
-#include "libc/intrin/lockcmpxchg.h"
-#include "libc/macros.internal.h"
+#include "libc/macros.h"
 #include "libc/nexgen32e/stackframe.h"
-#include "libc/nexgen32e/threaded.h"
+#include "libc/runtime/internal.h"
+#include "libc/runtime/runtime.h"
 #include "libc/runtime/stack.h"
-#include "libc/runtime/symbols.internal.h"
+#include "libc/thread/posixthread.internal.h"
+#include "libc/thread/thread.h"
+#include "libc/thread/tls.h"
+
+/**
+ * @fileoverview plain-text function call logging
+ */
 
 #define MAX_NESTING 512
 
-/**
- * @fileoverview Plain-text function call logging.
- *
- * Able to log ~2 million function calls per second, which is mostly
- * bottlenecked by system call overhead. Log size is reasonable if piped
- * into gzip.
- */
+#ifdef __x86_64__
+#define DETOUR_SKEW 2
+#elif defined(__aarch64__)
+#define DETOUR_SKEW 8
+#endif
 
-void ftrace_hook(void);
+static struct CosmoFtrace g_ftrace;
 
-static struct Ftrace {
-  int skew;
-  int stackdigs;
-  int64_t lastaddr;
-  volatile bool busy;
-} g_ftrace;
-
-static privileged inline int GetNestingLevelImpl(struct StackFrame *frame) {
-  int nesting = -2;
-  while (frame) {
+__funline int GetNestingLevelImpl(struct StackFrame *frame) {
+  int nesting = -1;
+  while (frame && !kisdangerous(frame)) {
     ++nesting;
     frame = frame->next;
   }
   return MAX(0, nesting);
 }
 
-static privileged inline int GetNestingLevel(struct StackFrame *frame) {
+__funline int GetNestingLevel(struct CosmoFtrace *ft, struct StackFrame *sf) {
   int nesting;
-  nesting = GetNestingLevelImpl(frame);
-  if (nesting < g_ftrace.skew) g_ftrace.skew = nesting;
-  nesting -= g_ftrace.skew;
+  nesting = GetNestingLevelImpl(sf);
+  if (nesting < ft->ft_skew)
+    ft->ft_skew = nesting;
+  nesting -= ft->ft_skew;
   return MIN(MAX_NESTING, nesting);
-}
-
-static privileged inline void ReleaseFtraceLock(void) {
-  g_ftrace.busy = false;
-}
-
-static privileged inline bool AcquireFtraceLock(void) {
-  if (!__threaded) {
-    return _cmpxchg(&g_ftrace.busy, false, true);
-  } else {
-    return _lockcmpxchg(&g_ftrace.busy, false, true);
-  }
 }
 
 /**
  * Prints name of function being called.
  *
- * We insert CALL instructions that point to this function, in the
- * prologues of other functions. We assume those functions behave
- * according to the System Five NexGen32e ABI.
+ * Whenever a function is called, ftrace_hook() will be called from the
+ * function prologue which saves the parameter registers and calls this
+ * function, which is responsible for logging the function call.
+ *
+ * @see ftrace_install()
  */
 privileged void ftracer(void) {
   long stackuse;
-  struct StackFrame *frame;
-  if (AcquireFtraceLock()) {
-    frame = __builtin_frame_address(0);
-    frame = frame->next;
-    if (frame->addr != g_ftrace.lastaddr) {
-      stackuse = (intptr_t)GetStackAddr(0) + GetStackSize() - (intptr_t)frame;
-      kprintf("%rFUN %5P %'13T %'*ld %*s%t\n", g_ftrace.stackdigs, stackuse,
-              GetNestingLevel(frame) * 2, "", frame->addr);
-      g_ftrace.lastaddr = frame->addr;
-    }
-    ReleaseFtraceLock();
-  }
-}
+  uintptr_t fn, st;
+  struct CosmoTib *tib;
+  struct StackFrame *sf;
+  struct CosmoFtrace *ft;
+  struct PosixThread *pt;
 
-textstartup int ftrace_install(void) {
-  if (GetSymbolTable()) {
-    g_ftrace.lastaddr = -1;
-    g_ftrace.stackdigs = LengthInt64Thousands(GetStackSize());
-    g_ftrace.skew = GetNestingLevelImpl(__builtin_frame_address(0));
-    return __hook(ftrace_hook, GetSymbolTable());
+  // get interesting values
+  sf = __builtin_frame_address(0);
+  st = (uintptr_t)__argv - sizeof(uintptr_t);
+  if (__ftrace <= 0)
+    return;
+
+  // determine top of stack
+  // main thread won't consider kernel provided argblock
+  if (__tls_enabled) {
+    tib = __get_tls_privileged();
+    if (tib->tib_ftrace <= 0)
+      return;
+    ft = &tib->tib_ftracer;
+    pt = (struct PosixThread *)tib->tib_pthread;
+    if (pt != &_pthread_static) {
+      if ((char *)sf >= tib->tib_sigstack_addr &&
+          (char *)sf <= tib->tib_sigstack_addr + tib->tib_sigstack_size) {
+        st = (uintptr_t)tib->tib_sigstack_addr + tib->tib_sigstack_size;
+      } else if (pt && pt->pt_attr.__stacksize) {
+        st = (uintptr_t)pt->pt_attr.__stackaddr + pt->pt_attr.__stacksize;
+      }
+    }
   } else {
-    kprintf("error: --ftrace failed to open symbol table\n");
-    return -1;
+    ft = &g_ftrace;
+  }
+
+  // estimate stack pointer of hooked function
+  uintptr_t usp = (uintptr_t)sf;
+  usp += sizeof(struct StackFrame);  // overhead of this function
+#if defined(__x86_64__)
+  usp += 8;       // ftrace_hook() stack aligning
+  usp += 8 * 8;   // ftrace_hook() pushed 8x regs
+  usp += 8 * 16;  // ftrace_hook() pushed 8x xmms
+#elif defined(__aarch64__)
+  usp += 384;  // overhead of ftrace_hook()
+#else
+#error "unsupported architecture"
+#endif
+
+  // determine how much stack hooked function is using
+  stackuse = st - usp;
+
+  // log function call
+  //
+  //     FUN $PID $TID $STARTNANOS $STACKUSE $SYMBOL
+  //
+  if (!ft->ft_once) {
+    ft->ft_lastaddr = -1;
+    ft->ft_skew = GetNestingLevelImpl(sf);
+    ft->ft_once = true;
+  }
+  sf = sf->next;
+  fn = sf->addr + DETOUR_SKEW;
+  if (fn != ft->ft_lastaddr) {
+    kprintf("%rFUN %6P %6H %'18T %'*ld %*s%t\n", ftrace_stackdigs, stackuse,
+            GetNestingLevel(ft, sf) * 2, "", fn);
+    ft->ft_lastaddr = fn;
   }
 }

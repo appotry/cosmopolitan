@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2020 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -16,8 +16,9 @@
 │ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR             │
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
-#include "libc/calls/struct/timeval.h"
-#include "libc/time/time.h"
+#include "libc/calls/calls.h"
+#include "libc/calls/struct/timespec.h"
+#include "libc/sysv/consts/clock.h"
 
 /**
  * Returns time as seconds from UNIX epoch.
@@ -27,11 +28,11 @@
  * @asyncsignalsafe
  */
 int64_t time(int64_t *opt_out_ret) {
-  int64_t secs;
-  struct timeval tv;
-  secs = nowl();
-  if (opt_out_ret) {
+  int64_t secs = -1;
+  struct timespec ts;
+  if (!clock_gettime(CLOCK_REALTIME, &ts))
+    secs = ts.tv_sec;
+  if (opt_out_ret)
     *opt_out_ret = secs;
-  }
   return secs;
 }

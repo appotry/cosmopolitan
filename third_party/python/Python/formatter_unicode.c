@@ -1,11 +1,11 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:4;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=4 sts=4 sw=4 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=4 sts=4 sw=4 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Python 3                                                                     │
 │ https://docs.python.org/3/license.html                                       │
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #include "libc/math.h"
-#include "libc/unicode/locale.h"
+#include "libc/str/locale.h"
 #include "third_party/python/Include/abstract.h"
 #include "third_party/python/Include/complexobject.h"
 #include "third_party/python/Include/fileutils.h"
@@ -19,7 +19,6 @@
 #include "third_party/python/Include/pyport.h"
 #include "third_party/python/Include/pystrtod.h"
 #include "third_party/python/Include/unicodeobject.h"
-/* clang-format off */
 
 /* implements the unicode (as opposed to string) version of the
    built-in formatters for string, int, float.  that is, the versions

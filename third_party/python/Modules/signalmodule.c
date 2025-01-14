@@ -1,17 +1,20 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:4;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=4 sts=4 sw=4 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=4 sts=4 sw=4 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Python 3                                                                     │
 │ https://docs.python.org/3/license.html                                       │
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #include "libc/calls/calls.h"
 #include "libc/calls/struct/itimerval.h"
+#include "libc/calls/struct/sigset.h"
 #include "libc/dce.h"
 #include "libc/errno.h"
 #include "libc/math.h"
 #include "libc/sysv/consts/itimer.h"
 #include "libc/sysv/consts/sig.h"
-#include "libc/time/time.h"
+#include "libc/thread/thread.h"
+#include "libc/time.h"
+#include "third_party/python/Include/abstract.h"
 #include "third_party/python/Include/ceval.h"
 #include "third_party/python/Include/dictobject.h"
 #include "third_party/python/Include/fileutils.h"
@@ -25,11 +28,11 @@
 #include "third_party/python/Include/pyerrors.h"
 #include "third_party/python/Include/pylifecycle.h"
 #include "third_party/python/Include/pymacro.h"
+#include "third_party/python/Include/setobject.h"
 #include "third_party/python/Include/tupleobject.h"
 #include "third_party/python/Include/yoink.h"
 #include "third_party/python/Modules/posixmodule.h"
 #include "third_party/python/pyconfig.h"
-/* clang-format off */
 
 PYTHON_PROVIDE("_signal");
 PYTHON_PROVIDE("_signal.ITIMER_PROF");
@@ -1565,7 +1568,12 @@ void *_PyOS_SigintEvent(void)
 }
 #endif
 
-_Section(".rodata.pytab.1") const struct _inittab _PyImport_Inittab__signal = {
+#ifdef __aarch64__
+_Section(".rodata.pytab.1 //")
+#else
+_Section(".rodata.pytab.1")
+#endif
+ const struct _inittab _PyImport_Inittab__signal = {
     "_signal",
     PyInit__signal,
 };

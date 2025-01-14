@@ -4,17 +4,18 @@
 #include "libc/calls/struct/stat.macros.h"
 #include "libc/errno.h"
 #include "libc/log/log.h"
+#include "libc/mem/gc.h"
 #include "libc/mem/mem.h"
-#include "libc/runtime/gc.internal.h"
+#include "libc/runtime/runtime.h"
 #include "libc/stdio/stdio.h"
 #include "libc/str/str.h"
 #include "libc/sysv/consts/o.h"
 #include "libc/sysv/consts/s.h"
 #include "libc/sysv/consts/sig.h"
-#include "libc/time/struct/utimbuf.h"
-#include "libc/time/time.h"
+#include "libc/utime.h"
+#include "libc/time.h"
+#include "libc/ctype.h"
 #include "third_party/bzip2/bzlib.h"
-/* clang-format off */
 
 /*-----------------------------------------------------------*/
 /*--- A block-sorting, lossless compressor        bzip2.c ---*/

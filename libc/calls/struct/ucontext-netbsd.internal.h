@@ -1,9 +1,10 @@
 #ifndef COSMOPOLITAN_LIBC_CALLS_STRUCT_UCONTEXT_NETBSD_INTERNAL_H_
 #define COSMOPOLITAN_LIBC_CALLS_STRUCT_UCONTEXT_NETBSD_INTERNAL_H_
-#if !(__ASSEMBLER__ + __LINKER__ + 0)
+#include "libc/calls/ucontext.h"
 COSMOPOLITAN_C_START_
 // clang-format off
-#include "libc/calls/ucontext.h"
+
+#ifdef __x86_64__
 
 #define __UCONTEXT_SIZE 784
 #define _UC_SIGMASK     0x01
@@ -12,7 +13,6 @@ COSMOPOLITAN_C_START_
 #define _UC_FPU         0x08
 #define _UC_TLSBASE     0x00080000
 #define _UC_SETSTACK    0x00010000
-#define _UC_CLRSTACK    0x00020000
 #define _UC_CLRSTACK    0x00020000
 
 union sigval_netbsd {
@@ -79,6 +79,7 @@ struct ucontext_netbsd {
   };
 };
 
+#endif /* __x86_64__ */
+
 COSMOPOLITAN_C_END_
-#endif /* !(__ASSEMBLER__ + __LINKER__ + 0) */
 #endif /* COSMOPOLITAN_LIBC_CALLS_STRUCT_UCONTEXT_NETBSD_INTERNAL_H_ */

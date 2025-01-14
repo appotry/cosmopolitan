@@ -1,4 +1,3 @@
-// clang-format off
 /*
   Copyright (c) 1990-2010 Info-ZIP.  All rights reserved.
 
@@ -31,8 +30,10 @@
 #define UNZIP_INTERNAL
 #include "libc/calls/struct/dirent.h"
 #include "libc/log/log.h"
-#include "libc/time/time.h"
+#include "libc/time.h"
 #include "third_party/unzip/unzip.h"
+#include "libc/utime.h"
+#include "third_party/unzip/globals.h"
 
 #ifdef USE_ICONV_MAPPING
 #endif /* USE_ICONV_MAPPING */
@@ -131,62 +132,6 @@ static ZCONST char CannotSetTimestamps[] =
 
 
 #ifndef SFX
-#ifdef NO_DIR                  /* for AT&T 3B1 */
-
-#define opendir(path) fopen(path,"r")
-#define closedir(dir) fclose(dir)
-typedef FILE DIR;
-typedef struct zdir {
-    FILE *dirhandle;
-    struct dirent *entry;
-} DIR
-DIR *opendir OF((ZCONST char *dirspec));
-void closedir OF((DIR *dirp));
-struct dirent *readdir OF((DIR *dirp));
-
-DIR *opendir(dirspec)
-    ZCONST char *dirspec;
-{
-    DIR *dirp;
-
-    if ((dirp = malloc(sizeof(DIR)) != NULL) {
-        if ((dirp->dirhandle = fopen(dirspec, "r")) == NULL) {
-            free(dirp);
-            dirp = NULL;
-        }
-    }
-    return dirp;
-}
-
-void closedir(dirp)
-    DIR *dirp;
-{
-    fclose(dirp->dirhandle);
-    free(dirp);
-}
-
-/*
- *  Apparently originally by Rich Salz.
- *  Cleaned up and modified by James W. Birdsall.
- */
-struct dirent *readdir(dirp)
-    DIR *dirp;
-{
-
-    if (dirp == NULL)
-        return NULL;
-
-    for (;;)
-        if (fread(&(dirp->entry), sizeof (struct dirent), 1,
-                  dirp->dirhandle) == 0)
-            return (struct dirent *)NULL;
-        else if ((dirp->entry).d_ino)
-            return &(dirp->entry);
-
-} /* end function readdir() */
-
-#endif /* NO_DIR */
-
 
 /**********************/
 /* Function do_wild() */   /* for porting: dir separator; match(ignore_case) */
@@ -1027,7 +972,7 @@ int checkdir(__G__ pathcomp, flag)
 /* Function mkdir() */
 /********************/
 
-int mkdir(path, mode)
+int mkdir_(path, mode)
     ZCONST char *path;
     int mode;   /* ignored */
 /*
@@ -1322,6 +1267,7 @@ int set_symlnk_attribs(__G__ slnk_entry)
     slinkentry *slnk_entry;
 {
     ulg z_uidgid[2];
+    (void)z_uidgid;
 
     if (slnk_entry->attriblen > 0) {
 # if (!defined(NO_LCHOWN))
@@ -2100,26 +2046,3 @@ int vol_attr_ok( const char *path)
  * Enable by specifying "LOCAL_UNZIP=-DNEED_STRERROR=1" on the "make"
  * command line.
  */
-
-#ifdef NEED_STRERROR
-
-char *strerror( err)
-  int err;
-{
-    extern char *sys_errlist[];
-    extern int sys_nerr;
-
-    static char no_msg[ 64];
-
-    if ((err >= 0) && (err < sys_nerr))
-    {
-        return sys_errlist[ err];
-    }
-    else
-    {
-        sprintf( no_msg, "(no message, code = %d.)", err);
-        return no_msg;
-    }
-}
-
-#endif /* def NEED_STRERROR */

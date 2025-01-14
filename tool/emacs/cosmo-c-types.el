@@ -80,6 +80,7 @@
            "uint_least8_t"
            "uintptr_t"
            "ssize_t"
+           "time_t"
            "long long int"
            "unsigned long long"
            "int8_t"
@@ -172,6 +173,18 @@
            "uint128_t"
            "axdx_t"))
 
+        (linux
+         '("i8"
+           "u8"
+           "i16"
+           "u16"
+           "i32"
+           "u32"
+           "i64"
+           "u64"
+           "off_t"
+           "rlim_t"))
+
         (x86intrin
          '("__v8hu"
            "__v16qi"
@@ -207,7 +220,13 @@
            "__m256i"
            "__m256_u"
            "__m256d_u"
-           "__m256i_u"))
+           "__m256i_u"
+           "__m512"
+           "__m512d"
+           "__m512i"
+           "__m512_u"
+           "__m512d_u"
+           "__m512i_u"))
 
 )
     (concat "\\_<"
@@ -218,6 +237,7 @@
                                 gnu
                                 cxx17
                                 cosmo
+                                linux
                                 x86intrin))
             "\\_>")))
 

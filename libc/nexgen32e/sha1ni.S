@@ -1,5 +1,5 @@
 /*-*- mode:unix-assembly; indent-tabs-mode:t; tab-width:8; coding:utf-8     -*-│
-│vi: set et ft=asm ts=8 tw=8 fenc=utf-8                                     :vi│
+│ vi: set noet ft=asm ts=8 sw=8 fenc=utf-8                                 :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │                                                                              │
 │  Copyright 2015 Intel Corporation                                            │
@@ -31,16 +31,17 @@
 │  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.        │
 │                                                                              │
 ╚─────────────────────────────────────────────────────────────────────────────*/
-#include "libc/macros.internal.h"
+#include "libc/macros.h"
 
-.text
-.align 32
-.ident "\n\
+.section .notice,"aR",@progbits
+.asciz "\n\n\
 Intel SHA-NI (BSD-3 License)\n\
 Copyright 2015 Intel Corporation\n\
 Sean Gulley <sean.m.gulley@intel.com>\n\
-Tim Chen <tim.c.chen@linux.intel.com>\n"
-.include "libc/disclaimer.inc"
+Tim Chen <tim.c.chen@linux.intel.com>"
+
+.text
+.balign 32
 
 #define FRAME_SIZE	32
 #define DIGEST_PTR	%rdi
@@ -77,10 +78,11 @@ Tim Chen <tim.c.chen@linux.intel.com>\n"
 //	@param	%rsi points to input data
 //	@param	%rdx is number of 64-byte blocks to process
 //	@see	X86_HAVE(SHA)
+	.ftrace1
 sha1_transform_ni:
+	.ftrace2
 	push	%rbp
 	mov	%rsp,%rbp
-	.profilable
 	sub	$FRAME_SIZE,%rsp
 	shl	$6,NUM_BLKS		# convert to bytes
 	jz	.Ldone_hash
@@ -276,11 +278,11 @@ sha1_transform_ni:
 	.endfn	sha1_transform_ni,globl
 
 .section .rodata.cst16.PSHUFFLE_BYTE_FLIP_MASK, "aM", @progbits, 16
-.align 16
+.balign 16
 PSHUFFLE_BYTE_FLIP_MASK:
 	.octa 0x000102030405060708090a0b0c0d0e0f
 
 .section .rodata.cst16.UPPER_WORD_MASK, "aM", @progbits, 16
-.align 16
+.balign 16
 UPPER_WORD_MASK:
 	.octa 0xFFFFFFFF000000000000000000000000

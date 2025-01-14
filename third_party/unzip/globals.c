@@ -1,4 +1,3 @@
-// clang-format off
 /*
   Copyright (c) 1990-2007 Info-ZIP.  All rights reserved.
 
@@ -23,6 +22,7 @@
 
 #define UNZIP_INTERNAL
 #include "third_party/unzip/unzip.h"
+#include "third_party/unzip/globals.h"
 
 #ifndef FUNZIP
 /* initialization of sigs is completed at runtime so unzip(sfx) executable

@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2022 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -16,17 +16,18 @@
 │ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR             │
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
+#include "tool/plinko/lib/gc.h"
 #include "libc/assert.h"
-#include "libc/bits/popcnt.h"
+#include "libc/intrin/bsf.h"
+#include "libc/intrin/popcnt.h"
 #include "libc/limits.h"
 #include "libc/log/check.h"
 #include "libc/log/countbranch.h"
 #include "libc/log/log.h"
-#include "libc/macros.internal.h"
+#include "libc/macros.h"
 #include "libc/mem/mem.h"
-#include "libc/nexgen32e/bsf.h"
+#include "libc/str/str.h"
 #include "tool/plinko/lib/cons.h"
-#include "tool/plinko/lib/gc.h"
 #include "tool/plinko/lib/histo.h"
 #include "tool/plinko/lib/plinko.h"
 #include "tool/plinko/lib/print.h"
@@ -47,7 +48,8 @@ struct Gc *NewGc(int A) {
   struct Gc *G;
   DCHECK_LE(B, A);
   DCHECK_LE(A, 0);
-  if (B < cHeap) cHeap = B;
+  if (B < cHeap)
+    cHeap = B;
   n = ROUNDUP(A - B, DWBITS) / DWBITS;
   G = Addr(BANE);
   bzero(G->M, n * sizeof(G->M[0]));
@@ -64,8 +66,9 @@ void Marker(const dword M[], int A, int x) {
   dword t;
   do {
     i = ~(x - A);
-    if (HasBit(M, i)) return;
-    SetBit(M, i);
+    if (HasBit(M, i))
+      return;
+    SetBit((void *)M, i);
     if (HI(GetShadow(x)) < A) {
       Marker(M, A, HI(GetShadow(x)));
     }
@@ -117,7 +120,8 @@ int Relocater(const dword M[], const unsigned P[], int A, int x) {
 void Sweep(struct Gc *G) {
   dword m;
   int a, b, d, i, j;
-  if (G->noop) return;
+  if (G->noop)
+    return;
   i = 0;
   b = d = G->A;
   for (; i < G->n; ++i) {
@@ -145,7 +149,8 @@ void Sweep(struct Gc *G) {
 
 int MarkSweep(int A, int x) {
   struct Gc *G;
-  if (x >= A) return cx = A, x;
+  if (x >= A)
+    return cx = A, x;
   G = NewGc(A);
   Mark(G, x);
   Census(G);

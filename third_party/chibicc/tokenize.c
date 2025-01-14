@@ -1,9 +1,11 @@
+#include "libc/intrin/bsf.h"
 #include "libc/log/log.h"
-#include "libc/nexgen32e/bsf.h"
 #include "libc/runtime/runtime.h"
 #include "libc/str/str.h"
+#include "libc/str/tab.h"
 #include "third_party/chibicc/chibicc.h"
 #include "third_party/chibicc/file.h"
+#include "libc/ctype.h"
 #include "third_party/chibicc/kw.h"
 
 // Input file
@@ -652,7 +654,7 @@ static uint32_t read_universal_char(char *p, int len) {
   uint32_t c = 0;
   for (int i = 0; i < len; i++) {
     if (!isxdigit(p[i])) return 0;
-    c = (c << 4) | hextoint(p[i]);
+    c = (c << 4) | kHexToInt[p[i] & 255];
   }
   return c;
 }

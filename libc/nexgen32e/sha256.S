@@ -47,12 +47,13 @@
 /////////////////////////////////////////////////////////////////////////
 // This code schedules 2 blocks at a time, with 4 lanes per block
 /////////////////////////////////////////////////////////////////////////
-#include "libc/macros.internal.h"
+#include "libc/macros.h"
 
-.ident "\n\
+.section .notice,"aR",@progbits
+.asciz "\n\n\
 AVX2 SHA2 (BSD-2 License)\n\
-Copyright 2013 Intel Corporation\n"
-.include "libc/disclaimer.inc"
+Copyright 2013 Intel Corporation"
+.previous
 
 ## assume buffers not aligned
 #define	VMOVDQ vmovdqu
@@ -529,11 +530,12 @@ STACK_SIZE	= _RSP      + _RSP_SIZE
 ## arg 3 : Num blocks
 ########################################################################
 .text
-.align 32
+.balign 32
+	.ftrace1
 sha256_transform_rorx:
+	.ftrace2
 	push	%rbp
 	mov	%rsp,%rbp
-	.profilable
 	pushq	%rbx
 	pushq	%r12
 	pushq	%r13
@@ -596,7 +598,7 @@ sha256_transform_rorx:
 	## schedule 48 input dwords, by doing 3 rounds of 12 each
 	xor	SRND, SRND
 
-.align 16
+.balign 16
 .Loop1:
 	vpaddd	kSha256x2+0*32(SRND), X0, XFER
 	vmovdqa XFER, 0*32+_XFER(%rsp, SRND)
@@ -652,7 +654,7 @@ sha256_transform_rorx:
 
 	#### Do second block using previously scheduled results
 	xor	SRND, SRND
-.align 16
+.balign 16
 .Loop3:
 	DO_4ROUNDS	 _XFER + 0*32 + 16
 	DO_4ROUNDS	 _XFER + 1*32 + 16
@@ -739,7 +741,7 @@ _SHUF_DC00:
 	.octa	0x0b0a090803020100FFFFFFFFFFFFFFFF
 
 	.bss
-	.align	64
+	.balign	64
 kSha256x2:
 	.zero	512
 	.endobj	kSha256x2,globl

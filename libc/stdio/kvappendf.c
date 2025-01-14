@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2021 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -17,10 +17,11 @@
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #include "libc/assert.h"
+#include "libc/dce.h"
 #include "libc/intrin/kprintf.h"
-#include "libc/macros.internal.h"
+#include "libc/macros.h"
 #include "libc/mem/mem.h"
-#include "libc/stdio/append.internal.h"
+#include "libc/stdio/append.h"
 
 #define W sizeof(size_t)
 
@@ -45,14 +46,16 @@ ssize_t kvappendf(char **b, const char *f, va_list v) {
   if ((r = kvsnprintf(p + z.i, z.n ? z.n - W - z.i : 0, f, v)) >= 0) {
     n = ROUNDUP(z.i + r + 1, 8) + W;
     if (n > z.n) {
-      if (!z.n) z.n = W * 2;
-      while (n > z.n) z.n += z.n >> 1;
+      if (!z.n)
+        z.n = W * 2;
+      while (n > z.n)
+        z.n += z.n >> 1;
       z.n = ROUNDUP(z.n, W);
       if ((p = realloc(p, z.n))) {
         z.n = malloc_usable_size(p);
-        assert(!(z.n & (W - 1)));
+        unassert(!(z.n & (W - 1)));
         s = kvsnprintf(p + z.i, z.n - W - z.i, f, w);
-        assert(s == r);
+        unassert(s == r);
         *b = p;
       } else {
         va_end(w);
@@ -60,7 +63,8 @@ ssize_t kvappendf(char **b, const char *f, va_list v) {
       }
     }
     z.i += r;
-    if (!IsTiny() && W == 8) z.i |= (size_t)APPEND_COOKIE << 48;
+    if (!IsTiny() && W == 8)
+      z.i |= (size_t)APPEND_COOKIE << 48;
     *(size_t *)(p + z.n - W) = z.i;
   }
   va_end(w);

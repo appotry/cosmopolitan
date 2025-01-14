@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2022 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -17,28 +17,14 @@
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #include "libc/calls/calls.h"
-#include "libc/calls/strace.internal.h"
-#include "libc/calls/struct/seccomp.h"
+#include "libc/calls/struct/seccomp.internal.h"
+#include "libc/calls/syscall-sysv.internal.h"
 #include "libc/dce.h"
 #include "libc/errno.h"
-#include "libc/intrin/describeflags.internal.h"
+#include "libc/intrin/describeflags.h"
+#include "libc/intrin/strace.h"
 #include "libc/sysv/consts/pr.h"
 #include "libc/sysv/errfuns.h"
-
-static const char *DescribeSeccompOperation(int x) {
-  switch (x) {
-    case SECCOMP_SET_MODE_STRICT:
-      return "SECCOMP_SET_MODE_STRICT";
-    case SECCOMP_SET_MODE_FILTER:
-      return "SECCOMP_SET_MODE_FILTER";
-    case SECCOMP_GET_ACTION_AVAIL:
-      return "SECCOMP_GET_ACTION_AVAIL";
-    case SECCOMP_GET_NOTIF_SIZES:
-      return "SECCOMP_GET_NOTIF_SIZES";
-    default:
-      return "SECCOMP_???";
-  }
-}
 
 /**
  * Tunes Linux security policy.
@@ -52,6 +38,7 @@ static const char *DescribeSeccompOperation(int x) {
 int seccomp(unsigned operation, unsigned flags, void *args) {
   int rc;
   if (IsLinux()) {
+#ifdef __x86_64__
     asm volatile("syscall"
                  : "=a"(rc)
                  : "0"(317), "D"(operation), "S"(flags), "d"(args)
@@ -74,10 +61,28 @@ int seccomp(unsigned operation, unsigned flags, void *args) {
       errno = -rc;
       rc = -1;
     }
+#elif defined(__aarch64__)
+    if (IsLinux()) {
+      register long r0 asm("x0") = (long)operation;
+      register long r1 asm("x1") = (long)flags;
+      register long r2 asm("x2") = (long)args;
+      register long res_x0 asm("x0");
+      asm volatile("mov\tx8,%1\n\t"
+                   "svc\t0"
+                   : "=r"(res_x0)
+                   : "i"(211), "r"(r0), "r"(r1), "r"(r2)
+                   : "x8", "memory");
+      rc = _sysret(res_x0);
+    } else {
+      rc = enosys();
+    }
+#else
+#error "arch unsupported"
+#endif
   } else {
     rc = enosys();
   }
-  STRACE("seccomp(%s, %#x, %p) → %d% m", DescribeSeccompOperation(operation),
+  STRACE("seccomp(%s, %#x, %p) → %d% m", _DescribeSeccompOperation(operation),
          flags, args, rc);
   return rc;
 }

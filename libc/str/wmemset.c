@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2020 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -23,15 +23,9 @@
  * @asyncsignalsafe
  */
 wchar_t *wmemset(wchar_t *p, wchar_t c, size_t n) {
-  size_t i = 0;
-  if (n >= 4) {
-    wchar_t v __attribute__((__vector_size__(16))) = {c, c, c, c};
-    do {
-      __builtin_memcpy(p + i, &v, 16);
-    } while ((i += 4) + 4 <= n);
-  }
-  while (i < n) {
-    p[i++] = c;
+  size_t i;
+  for (i = 0; i < n; ++i) {
+    p[i] = c;
   }
   return p;
 }

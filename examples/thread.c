@@ -1,70 +1,17 @@
-#if 0
-/*─────────────────────────────────────────────────────────────────╗
-│ To the extent possible under law, Justine Tunney has waived      │
-│ all copyright and related or neighboring rights to this file,    │
-│ as it is written in the following disclaimers:                   │
-│   • http://unlicense.org/                                        │
-│   • http://creativecommons.org/publicdomain/zero/1.0/            │
-╚─────────────────────────────────────────────────────────────────*/
-#endif
-#include "libc/calls/calls.h"
-#include "libc/dce.h"
-#include "libc/intrin/kprintf.h"
-#include "libc/log/log.h"
-#include "libc/runtime/runtime.h"
-#include "libc/stdio/stdio.h"
-#include "libc/thread/thread.h"
-#include "libc/time/time.h"
+#include <pthread.h>
+#include <stdio.h>
 
-cthread_sem_t semaphore;
-_Thread_local int test_tls = 0x12345678;
+// how to spawn a thread
 
-static void *worker(void *arg) {
-  int tid;
-  cthread_t self;
-  cthread_sem_signal(&semaphore);
-  self = cthread_self();
-  tid = self->tid;
-  printf("[%p] %d -> %#x\n", self, tid, test_tls);
-  if (test_tls != 0x12345678) {
-    printf(".tdata test #2 failed\n");
-  }
-  return (void *)4;
+void *my_thread(void *arg) {
+  printf("my_thread(%p) is running\n", arg);
+  return (void *)0x456L;
 }
 
-int main() {
-  int rc, tid;
-  void *exitcode;
-  cthread_t self, thread;
-
-  if (IsWindows() || IsXnu()) {
-    fprintf(stderr,
-            "error: can't run example\n"
-            "_Thread_local only works on Linux/FreeBSD/NetBSD/OpenBSD\n");
-    return 1;
-  }
-
-  self = cthread_self();
-  tid = self->tid;
-  printf("[%p] %d -> %#x\n", self, tid, test_tls);
-  if (test_tls != 0x12345678) {
-    printf(".tdata test #1 failed\n");
-  }
-  cthread_sem_init(&semaphore, 0);
-  rc = cthread_create(&thread, NULL, &worker, NULL);
-  if (rc == 0) {
-    cthread_sem_wait(&semaphore, 0, NULL);
-    printf("thread created: %p\n", thread);
-#if 1
-    cthread_join(thread, &exitcode);
-#else
-    exitcode = cthread_detach(thread);
-#endif
-    cthread_sem_signal(&semaphore);
-    cthread_sem_wait(&semaphore, 0, NULL);
-    printf("thread joined: %p -> %p\n", thread, exitcode);
-  } else {
-    fprintf(stderr, "ERROR: thread could not be started: %d\n", rc);
-  }
-  return 0;
+int main(int argc, char *argv[]) {
+  void *res;
+  pthread_t th;
+  pthread_create(&th, 0, my_thread, (void *)0x123L);
+  pthread_join(th, &res);
+  printf("my_thread() returned %p\n", res);
 }

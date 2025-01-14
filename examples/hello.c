@@ -7,11 +7,8 @@
 │   • http://creativecommons.org/publicdomain/zero/1.0/            │
 ╚─────────────────────────────────────────────────────────────────*/
 #endif
-#include "libc/stdio/stdio.h"
-
-STATIC_YOINK("mmap");  // TODO: fix bandaid for MODE=asan
+#include <stdio.h>
 
 int main() {
-  printf("%s\n", "hello world");
-  return 0;
+  printf("hello world\n");
 }

@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:2;tab-width:8;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright 2020 Justine Alexandra Roberts Tunney                              │
 │                                                                              │
@@ -17,50 +17,75 @@
 │ PERFORMANCE OF THIS SOFTWARE.                                                │
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #include "libc/assert.h"
-#include "libc/bits/weaken.h"
 #include "libc/calls/calls.h"
+#include "libc/calls/cp.internal.h"
 #include "libc/calls/internal.h"
-#include "libc/calls/strace.internal.h"
 #include "libc/calls/struct/iovec.h"
+#include "libc/calls/struct/iovec.internal.h"
 #include "libc/calls/syscall-sysv.internal.h"
 #include "libc/dce.h"
-#include "libc/intrin/asan.internal.h"
-#include "libc/macros.internal.h"
+#include "libc/intrin/strace.h"
+#include "libc/intrin/weaken.h"
+#include "libc/macros.h"
 #include "libc/runtime/runtime.h"
+#include "libc/runtime/zipos.internal.h"
+#include "libc/stdio/sysparam.h"
 #include "libc/sysv/errfuns.h"
-#include "libc/zipos/zipos.internal.h"
 
 /**
- * Reads from file at offset, thus avoiding superfluous lseek().
+ * Reads from file at offset.
+ *
+ * This function never changes the current position of `fd`.
  *
  * @param fd is something open()'d earlier, noting pipes might not work
  * @param buf is copied into, cf. copy_file_range(), sendfile(), etc.
- * @param size in range [1..0x7ffff000] is reasonable
+ * @param size is always saturated to 0x7ffff000 automatically
  * @param offset is bytes from start of file at which read begins
  * @return [1..size] bytes on success, 0 on EOF, or -1 w/ errno; with
  *     exception of size==0, in which case return zero means no error
+ * @raise ESPIPE if `fd` isn't seekable
+ * @raise EINVAL if `offset` is negative
+ * @raise EBADF if `fd` isn't an open file descriptor
+ * @raise EIO if a complicated i/o error happened
+ * @raise EINTR if signal was delivered instead
+ * @raise ECANCELED if thread was cancelled in masked mode
  * @see pwrite(), write()
+ * @cancelationpoint
  * @asyncsignalsafe
  * @vforksafe
  */
 ssize_t pread(int fd, void *buf, size_t size, int64_t offset) {
   ssize_t rc;
-  if (fd == -1 || offset < 0) return einval();
-  if (IsAsan() && !__asan_is_valid(buf, size)) {
-    rc = efault();
+  BEGIN_CANCELATION_POINT;
+
+  // XNU and BSDs will EINVAL if requested bytes exceeds INT_MAX
+  // this is inconsistent with Linux which ignores huge requests
+  size = MIN(size, 0x7ffff000);
+
+  if (offset < 0) {
+    rc = einval();
+  } else if (fd < 0) {
+    rc = ebadf();
   } else if (__isfdkind(fd, kFdZip)) {
-    rc =
-        weaken(__zipos_read)((struct ZiposHandle *)(intptr_t)g_fds.p[fd].handle,
-                             (struct iovec[]){{buf, size}}, 1, offset);
+    rc = _weaken(__zipos_read)(
+        (struct ZiposHandle *)(intptr_t)g_fds.p[fd].handle,
+        (struct iovec[]){{buf, size}}, 1, offset);
   } else if (!IsWindows()) {
     rc = sys_pread(fd, buf, size, offset, offset);
-  } else if (__isfdkind(fd, kFdFile)) {
-    rc = sys_read_nt(&g_fds.p[fd], (struct iovec[]){{buf, size}}, 1, offset);
+  } else if (__isfdkind(fd, kFdSocket)) {
+    rc = espipe();
+  } else if (__isfdkind(fd, kFdFile) || __isfdkind(fd, kFdDevNull) ||
+             __isfdkind(fd, kFdDevRandom)) {
+    rc = sys_read_nt(fd, (struct iovec[]){{buf, size}}, 1, offset);
   } else {
     rc = ebadf();
   }
-  assert(rc == -1 || (size_t)rc <= size);
+  npassert(rc == -1 || (size_t)rc <= size);
+
+  END_CANCELATION_POINT;
   DATATRACE("pread(%d, [%#.*hhs%s], %'zu, %'zd) → %'zd% m", fd,
             MAX(0, MIN(40, rc)), buf, rc > 40 ? "..." : "", size, offset, rc);
   return rc;
 }
+
+__weak_reference(pread, pread64);

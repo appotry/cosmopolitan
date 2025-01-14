@@ -1,4 +1,3 @@
-/* clang-format off */
 /* Interface to mmap style I/O
 
    (c) 2006-2008 (W3C) MIT, ERCIM, Keio University
@@ -16,6 +15,7 @@
 #include "libc/sysv/consts/prot.h"
 #include "libc/calls/calls.h"
 #include "libc/sysv/consts/map.h"
+#include "libc/runtime/runtime.h"
 #include "third_party/tidy/mappedio.h"
 
 #if SUPPORT_POSIX_MAPPED_FILES

@@ -1,5 +1,5 @@
 /*-*- mode:c;indent-tabs-mode:nil;c-basic-offset:4;tab-width:4;coding:utf-8 -*-│
-│vi: set net ft=c ts=2 sts=2 sw=2 fenc=utf-8                                :vi│
+│ vi: set et ft=c ts=2 sts=2 sw=2 fenc=utf-8                               :vi │
 ╞══════════════════════════════════════════════════════════════════════════════╡
 │ Copyright The Mbed TLS Contributors                                          │
 │                                                                              │
@@ -16,6 +16,7 @@
 │ limitations under the License.                                               │
 ╚─────────────────────────────────────────────────────────────────────────────*/
 #include "libc/mem/mem.h"
+#include "libc/str/str.h"
 #include "third_party/mbedtls/aes.h"
 #include "third_party/mbedtls/base64.h"
 #include "third_party/mbedtls/chk.h"
@@ -26,13 +27,7 @@
 #include "third_party/mbedtls/md5.h"
 #include "third_party/mbedtls/pem.h"
 #include "third_party/mbedtls/platform.h"
-/* clang-format off */
-
-asm(".ident\t\"\\n\\n\
-Mbed TLS (Apache 2.0)\\n\
-Copyright ARM Limited\\n\
-Copyright Mbed TLS Contributors\"");
-asm(".include \"libc/disclaimer.inc\"");
+__static_yoink("mbedtls_notice");
 
 /**
  * @fileoverview Privacy Enhanced Mail (PEM) decoding
